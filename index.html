@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Project Card Creator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        label { display: block; margin-top: 10px; }
+        input, textarea, select { width: 100%; padding: 5px; margin-top: 5px; }
+        button { margin-top: 20px; padding: 10px; }
+        #imageUrls { list-style-type: none; padding: 0; }
+        #imageUrls li { margin-bottom: 5px; }
+        #result { margin-top: 20px; padding: 10px; background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>GitHub Project Card Creator</h1>
+    <form id="cardForm">
+        <label for="template">Template:</label>
+        <select id="template">
+          <option value="">Select a template</option>
+        </select>
+
+        <label for="title">Title:</label>
+        <input type="text" id="title" required>
+
+        <label for="content">Content:</label>
+        <textarea id="content" rows="4" required></textarea>
+
+        <label for="imageUrl">Image URL:</label>
+        <input type="file" id="imageUrl" name="imageUrl" multiple>
+
+        <div id="dynamicFields"></div>
+
+        <label for="token">GitHub Personal Access Token:</label>
+        <input type="password" id="token" value="" required>
+
+        <button type="submit">Create Card</button>
+    </form>
+
+    <div id="result"></div>
+
+     <script>
+        const form = document.getElementById('cardForm');
+        const imageUrlInput = document.getElementById('imageUrl');
+        const resultDiv = document.getElementById('result');
+        var projectFields = [];
+        var projectID = "";
+        var projectNumber = 62;
+        var organization = "skycatchfire";
+        const templates = [
+            {
+                id: '1',
+                title: "Component - COPY ME",
+                content: "Mocks\n-----\n\n\n### ScreenShots\n\n\n\n\n### Requirements\n\n- [ ] Check comments in Invision for requirements\n\n\n### CMS\n- [ ] Build ACF Group\n- [ ] Build Group Fields\n- [ ] Set section to \"inactive\" so it only shows when added to page sections\n- [ ] Add To page sections\n- [ ] Add `aq_resize` to images ex: `<?php print aq_resize($image['url'], 450, 450, true); ?>`\n- [ ] Add `Content Tab`, `Settings Tab` and settings fields. (if applicable)\n\n\n### Development\n- [ ] Develop Desktop\n- [ ] Develop Tablet\n- [ ] Develop Mobile\n- [ ] Find and develop all variants\n- [ ] Add section to appropriate pages on Dev site\n- [ ] If using background image, add role=\"img\" and aria-label attribute value to element\n- [ ] Never use `the_field()`. Only use `get_field()`\n- [ ] Apply HTML escaping wherever HTML is rendered by ACF.\n- [ ] escape and hardcoded text. `_e('the text', 'fire');`\n\n\n### Testing\n- [ ] **Test multiple variations for sections.** Try things like different copy length, with and without images, etc. Try to break the section, by using it how it wasn't intended. Don't assume the mock will always be how it's used.\n- [ ] Check aXe for general accessibility & semantics (ADA).\n- [ ] Test Large Desktop (1920)\n- [ ] Test Medium Desktop (1440)\n- [ ] Test Small Desktop (1280)\n- [ ] Test Desktop: Chrome\n- [ ] Test Desktop: FireFox\n- [ ] Test Desktop: Safari\n- [ ] Test Desktop: Edge\n- [ ] Test iPad\n- [ ] Test iPhone\n- [ ] Test Android\n- [ ] Run `npm run build` and make sure nothing you need got purged",
+                presetCustomFields: {
+                    status: [{id:"c864437f", fieldName: 'status'}],
+                    cardType: [{id:"6fe5e32e", fieldName: 'card-type'}],
+                    cycle: [{id:"e6e7689e", fieldName: 'cycle'}],
+                    hoursEstimated: [{value: 4, fieldName: 'hours-estimated'}]
+                },
+            },
+            {
+                id: '2',
+                title: "Page - COPY ME",
+                content: "### Content Entry\n- [ ] Create the page\n- [ ] Add all sections to the page\n- [ ] Populate all sections with real content\n- [ ] Add desktop gaps between sections to match mockups\n- [ ] Add tablet gaps between sections to match mockups\n- [ ] Add mobile gaps between sections to match mockups",
+                presetCustomFields: {
+                    status: [{id:"c864437f", fieldName: 'status'}],
+                    cardType: [{id:"590da93e", fieldName: 'card-type'}],
+                    cycle: [{id:"e6e7689e", fieldName: 'cycle'}],
+                    hoursEstimated: [{value: 4, fieldName: 'hours-estimated'}]
+                },
+            },
+            {
+                id: '3',
+                title: "Taxonomy Type - COPY ME",
+                content: "### Checklist\n- [ ] Create Taxonomy using ACF\n- [ ] Add post type specific fields using ACF\n- [ ] Saved/Committed the exported post type field json\n- [ ] Hide from search if needed.",
+                presetCustomFields: {
+                    status: [{id:"c864437f", fieldName: 'status'}],
+                    cardType: [{id:"590da93e", fieldName: 'card-type'}],
+                    cycle: [{id:"e6e7689e", fieldName: 'cycle'}],
+                    hoursEstimated: [{value: 4, fieldName: 'hours-estimated'}]
+                },
+            },
+            {
+                id: '4',
+                title: "Post Type - COPY ME",
+                content: "###Checklist\n- [ ] Create Post type using ACF\n- [ ] Add post type specific fields using ACF\n- [ ] Saved/Committed the exported post type field json\n- [ ] Add slug rewrites if needed.\n- [ ] Hide from search if needed.\n- [ ] Should the post have a url? if not disable \"Public\" in the ACF options",
+                presetCustomFields: {
+                    status: [{id:"c864437f", fieldName: 'status'}],
+                    cardType: [{id:"590da93e", fieldName: 'card-type'}],
+                    cycle: [{id:"e6e7689e", fieldName: 'cycle'}],
+                    hoursEstimated: [{value: 4, fieldName: 'hours-estimated'}]
+                },
+            }
+        ];
+
+        function populateTemplates() {
+            const templateSelect = document.getElementById('template');
+            templates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.id;
+                option.textContent = template.title;
+                templateSelect.appendChild(option);
+            });
+        }
+
+        populateTemplates();
+
+        document.getElementById('template').addEventListener('change', (e) => {
+            const selectedTemplate = templates.find(t => t.id === e.target.value);
+            if (selectedTemplate) {
+                document.getElementById('title').value = selectedTemplate.title;
+                document.getElementById('content').value = selectedTemplate.content;
+
+                if (selectedTemplate.presetCustomFields) {
+                    for (const field of projectFields) {
+                        const presetField = Object.values(selectedTemplate.presetCustomFields).flat().find(f => f.fieldName === field.name.toLowerCase().replace(/\s+/g, '-'));
+                        if (presetField) {
+                            if (field.dataType === 'NUMBER' && field.name.toLowerCase().replace(/\s+/g, '-') === 'hours-estimated') {
+                                const input = document.querySelector(`input[name="${field.name.toLowerCase().replace(/\s+/g, '-')}"]`);
+                                if (input) {
+                                    input.value = presetField.value;
+                                }
+                            } else {
+                                const select = document.querySelector(`select[name="${field.name.toLowerCase().replace(/\s+/g, '-')}"]`);
+                                if (select) {
+                                    select.value = presetField.id;
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        });
+
+        async function fetchProjectFields(token) {
+            const query = `
+            query {
+                organization(login: "${organization}") {
+                    projectV2(number: ${62}) {
+                        id
+                        title
+                        fields(first: 100) {
+                            nodes {
+                                ... on ProjectV2Field { id name dataType }
+                                ... on ProjectV2IterationField { id name dataType configuration { iterations { title startDate id } } }
+                                ... on ProjectV2SingleSelectField { id name dataType options { id name } }
+                            }
+                        }
+                    }
+                }
+            }`;
+
+            const response = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query }),
+            });
+
+            const data = await response.json();
+            projectID = data.data.organization.projectV2.id;
+            console.log(data.data.organization.projectV2.fields.nodes);
+            return data.data.organization.projectV2.fields.nodes.filter(field =>
+                field.dataType === 'SINGLE_SELECT' ||
+                field.dataType === 'NUMBER' ||
+                field.dataType === 'ITERATION'
+            );
+        }
+
+        function createSelectElement(field) {
+            const select = document.createElement('select');
+            select.name = field.name.toLowerCase().replace(/\s+/g, '-');
+            select.id = select.name;
+
+            const label = document.createElement('label');
+            label.htmlFor = select.id;
+            label.textContent = field.name + ':';
+
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(label);
+            wrapper.appendChild(select);
+
+            return wrapper;
+        }
+
+        function createNumberElement(field) {
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.name = field.name.toLowerCase().replace(/\s+/g, '-');
+            input.id = input.name;
+
+            const label = document.createElement('label');
+            label.htmlFor = input.id;
+            label.textContent = field.name + ':';
+
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+
+            return wrapper;
+        }
+
+        async function populateForm(token) {
+            projectFields = await fetchProjectFields(token);
+
+            const dynamicFieldsContainer = document.getElementById('dynamicFields');
+            dynamicFieldsContainer.innerHTML = '';
+
+            for (const field of projectFields) {
+                if(field.dataType === 'SINGLE_SELECT' || field.dataType === 'ITERATION') {
+                    const options = field.dataType === 'SINGLE_SELECT' ? field.options : field.configuration.iterations;
+                    if (options && options.length > 0) {
+                        const selectWrapper = createSelectElement(field);
+                        dynamicFieldsContainer.appendChild(selectWrapper);
+
+                        const select = selectWrapper.querySelector('select');
+                        select.innerHTML = '<option value="">Select a ' + field.name + '</option>';
+                        options.forEach(option => {
+                            const el = document.createElement('option');
+                            el.value = option.id;
+                            el.textContent = field.dataType === 'SINGLE_SELECT' ? option.name : option.title;
+                            select.appendChild(el);
+                        });
+                    }
+                } else {
+                    const numberWrapper = createNumberElement(field);
+                    dynamicFieldsContainer.appendChild(numberWrapper);
+                }
+            }
+        }
+
+        async function updateProjectFields(token, itemId, fields) {
+            for (const field of fields) {
+                let mutation = `
+                mutation {
+                    updateProjectV2ItemFieldValue(input: {
+                        projectId: "${projectID}"
+                        itemId: "${itemId}"
+                        fieldId: "${field.fieldId}"
+                        value: { ${field.value} }
+                    }) {
+                        projectV2Item {
+                            id
+                        }
+                    }
+                }`;
+
+                try {
+                    const response = await fetch('https://api.github.com/graphql', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ query: mutation }),
+                    });
+
+                    const data = await response.json();
+                    console.log(`Update ${field.fieldId} Response:`, data);
+                } catch (error) {
+                    console.error(`Error updating field ${field.fieldId}:`, error);
+                }
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            resultDiv.innerHTML = ''; // Clear previous results
+
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').value.trim();
+            const token = document.getElementById('token').value.trim();
+            const images = Array.from(imageUrlInput.files).map(file => URL.createObjectURL(file));
+
+            if (!title || !content || !token) {
+                resultDiv.textContent = 'Error: All fields except Hours Estimated are required.';
+                return;
+            }
+
+            const mutation = `
+            mutation {
+                addProjectV2DraftIssue(input: {
+                    projectId: "${projectID}"
+                    title: "${title}"
+                    body: "${content.replace(/"/g, '\\"')}\\n\\n${images.map(url => `![Image](${url})`).join('\\n')}"
+                }) {
+                    projectItem {
+                        id
+                    }
+                }
+            }`;
+
+            try {
+                const response = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: mutation }),
+                });
+
+                const data = await response.json();
+                const itemId = data.data.addProjectV2DraftIssue.projectItem.id;
+
+                // Collect field values dynamically
+                const fieldsToUpdate = [];
+                    projectFields.forEach(field => {
+                        const fieldName = field.name.toLowerCase().replace(/\s+/g, '-');
+                        if (field.dataType === 'SINGLE_SELECT') {
+                            const select = document.querySelector(`select[name="${fieldName}"]`);
+                            if (select && select.value) {
+                                fieldsToUpdate.push({
+                                    fieldId: field.id,
+                                    value: `singleSelectOptionId: "${select.value}"`
+                                });
+                            }
+                        } else if (field.dataType === 'ITERATION') {
+                            const select = document.querySelector(`select[name="${fieldName}"]`);
+                            if (select && select.value) {
+                                fieldsToUpdate.push({
+                                    fieldId: field.id,
+                                    value: `iterationId: "${select.value}"`
+                                });
+                            }
+                        } else if (field.dataType === 'NUMBER') {
+                            const input = document.querySelector(`input[name="${fieldName}"]`);
+                            if (input && input.value) {
+                                fieldsToUpdate.push({
+                                    fieldId: field.id,
+                                    value: `number: ${input.value}`
+                                });
+                            }
+                        }
+                    });
+                console.log(fieldsToUpdate);
+
+
+                await updateProjectFields(token, itemId, fieldsToUpdate);
+
+                resultDiv.textContent = `Card created successfully! ID: ${itemId}`;
+            } catch (error) {
+                resultDiv.textContent = `Error creating card: ${error.message}`;
+            }
+        });
+
+        if (localStorage.getItem('token')) {
+            document.getElementById('token').value = localStorage.getItem('token');
+            populateForm(localStorage.getItem('token'));
+        }
+
+        document.getElementById('token').addEventListener('change', (e) => {
+            populateForm(e.target.value);
+            localStorage.setItem('token', e.target.value);
+        });
+    </script>
+</body>
+</html>
