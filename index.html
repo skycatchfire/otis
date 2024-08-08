@@ -3,43 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <title>GitHub Project Card Creator</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-        label { display: block; margin-top: 10px; }
-        input, textarea, select { width: 100%; padding: 5px; margin-top: 5px; }
-        button { margin-top: 20px; padding: 10px; }
-        #imageUrls { list-style-type: none; padding: 0; }
-        #imageUrls li { margin-bottom: 5px; }
-        #result { margin-top: 20px; padding: 10px; background-color: #f0f0f0; }
-    </style>
 </head>
-<body>
-    <h1>GitHub Project Card Creator</h1>
-    <form id="cardForm">
-        <label for="template">Template:</label>
-        <select id="template">
-          <option value="">Select a template</option>
-        </select>
+<body class="bg-gray-100">
+    <div class="max-w-lg px-4 mx-auto w-full my-20">
 
-        <label for="title">Title:</label>
-        <input type="text" id="title" required>
+        <h1 class="text-4xl font-bold text-center my-8">GitHub Project Card Creator</h1>
+        <form id="cardForm" class="flex flex-col gap-5">
+          <div>
+            <label for="template" class="block text-sm font-medium leading-6 text-gray-900">Template</label>
+            <select id="template" name="template" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6">
+              <option value="" selected>Select a template</option>
+            </select>
+          </div>
 
-        <label for="content">Content:</label>
-        <textarea id="content" rows="4" required></textarea>
+          <div>
+            <label for="title" class="block text-sm font-medium leading-6 text-gray-900">Title</label>
+            <div class="mt-2">
+              <input type="title" name="title" id="title" class="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" required>
+            </div>
+          </div>
 
-        <label for="imageUrl">Image URL:</label>
-        <input type="file" id="imageUrl" name="imageUrl" multiple>
+          <div>
+            <label for="content" class="block text-sm font-medium leading-6 text-gray-900">Content</label>
 
-        <div id="dynamicFields"></div>
+            <textarea id="content" rows="4" class="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 resize-y" required></textarea>
+          </div>
 
-        <label for="token">GitHub Personal Access Token:</label>
-        <input type="password" id="token" value="" required>
+          <div>
+            <label for="imageUrl" class="block text-sm font-medium leading-6 text-gray-900">Image URL</label>
+            <input type="file" id="imageUrl" name="imageUrl" class="mt-2 block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-indigo-50 hover:file:bg-indigo-900" multiple>
+          </div>
 
-        <button type="submit">Create Card</button>
-    </form>
+          <div id="dynamicFields" class="flex flex-col gap-5"></div>
 
-    <div id="result"></div>
+          <div class="flex gap-4">
+
+            <div class="grow shrink-0">
+              <label class="block text-sm font-medium leading-6 text-gray-900" for="project-number">GitHub Project #</label>
+              <input class="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6" type="number" name="project-number" id="project-number">
+            </div>
+
+            <div class="grow shrink-0">
+              <label for="organization" class="block text-sm font-medium leading-6 text-gray-900">GitHub Organization</label>
+              <div class="mt-2">
+                <input type="organization" name="organization" id="organization" class="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" required>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="token" class="block text-sm font-medium leading-6 text-gray-900">GitHub Personal Access Token</label>
+            <input type="password" id="token" value="" class="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" required>
+          </div>
+
+          <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-900">Create Card</button>
+        </form>
+
+        <div id="result"></div>
+    </div>
 
      <script>
         const form = document.getElementById('cardForm');
@@ -47,13 +70,13 @@
         const resultDiv = document.getElementById('result');
         var projectFields = [];
         var projectID = "";
-        var projectNumber = 62;
-        var organization = "skycatchfire";
+        var projectNumber;
+        var organization;
         const templates = [
             {
                 id: '1',
                 title: "Component - COPY ME",
-                content: "Mocks\n-----\n\n\n### ScreenShots\n\n\n\n\n### Requirements\n\n- [ ] Check comments in Invision for requirements\n\n\n### CMS\n- [ ] Build ACF Group\n- [ ] Build Group Fields\n- [ ] Set section to \"inactive\" so it only shows when added to page sections\n- [ ] Add To page sections\n- [ ] Add `aq_resize` to images ex: `<?php print aq_resize($image['url'], 450, 450, true); ?>`\n- [ ] Add `Content Tab`, `Settings Tab` and settings fields. (if applicable)\n\n\n### Development\n- [ ] Develop Desktop\n- [ ] Develop Tablet\n- [ ] Develop Mobile\n- [ ] Find and develop all variants\n- [ ] Add section to appropriate pages on Dev site\n- [ ] If using background image, add role=\"img\" and aria-label attribute value to element\n- [ ] Never use `the_field()`. Only use `get_field()`\n- [ ] Apply HTML escaping wherever HTML is rendered by ACF.\n- [ ] escape and hardcoded text. `_e('the text', 'fire');`\n\n\n### Testing\n- [ ] **Test multiple variations for sections.** Try things like different copy length, with and without images, etc. Try to break the section, by using it how it wasn't intended. Don't assume the mock will always be how it's used.\n- [ ] Check aXe for general accessibility & semantics (ADA).\n- [ ] Test Large Desktop (1920)\n- [ ] Test Medium Desktop (1440)\n- [ ] Test Small Desktop (1280)\n- [ ] Test Desktop: Chrome\n- [ ] Test Desktop: FireFox\n- [ ] Test Desktop: Safari\n- [ ] Test Desktop: Edge\n- [ ] Test iPad\n- [ ] Test iPhone\n- [ ] Test Android\n- [ ] Run `npm run build` and make sure nothing you need got purged",
+                content: "Mocks\n-----\n\n### ScreenShots\n\n### Requirements\n\n- [ ] Check comments in Invision for requirements\n\n\n### CMS\n- [ ] Build ACF Group\n- [ ] Build Group Fields\n- [ ] Set section to \"inactive\" so it only shows when added to page sections\n- [ ] Add To page sections\n- [ ] Add `aq_resize` to images ex: `<?php print aq_resize($image['url'], 450, 450, true); ?>`\n- [ ] Add `Content Tab`, `Settings Tab` and settings fields. (if applicable)\n\n\n### Development\n- [ ] Develop Desktop\n- [ ] Develop Tablet\n- [ ] Develop Mobile\n- [ ] Find and develop all variants\n- [ ] Add section to appropriate pages on Dev site\n- [ ] If using background image, add role=\"img\" and aria-label attribute value to element\n- [ ] Never use `the_field()`. Only use `get_field()`\n- [ ] Apply HTML escaping wherever HTML is rendered by ACF.\n- [ ] escape and hardcoded text. `_e('the text', 'fire');`\n\n\n### Testing\n- [ ] **Test multiple variations for sections.** Try things like different copy length, with and without images, etc. Try to break the section, by using it how it wasn't intended. Don't assume the mock will always be how it's used.\n- [ ] Check aXe for general accessibility & semantics (ADA).\n- [ ] Test Large Desktop (1920)\n- [ ] Test Medium Desktop (1440)\n- [ ] Test Small Desktop (1280)\n- [ ] Test Desktop: Chrome\n- [ ] Test Desktop: FireFox\n- [ ] Test Desktop: Safari\n- [ ] Test Desktop: Edge\n- [ ] Test iPad\n- [ ] Test iPhone\n- [ ] Test Android\n- [ ] Run `npm run build` and make sure nothing you need got purged",
                 presetCustomFields: {
                     status: [{id:"c864437f", fieldName: 'status'}],
                     cardType: [{id:"6fe5e32e", fieldName: 'card-type'}],
@@ -175,10 +198,12 @@
 
         function createSelectElement(field) {
             const select = document.createElement('select');
+            select.className = 'mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6';
             select.name = field.name.toLowerCase().replace(/\s+/g, '-');
             select.id = select.name;
 
             const label = document.createElement('label');
+            label.className = 'block text-sm font-medium leading-6 text-gray-900';
             label.htmlFor = select.id;
             label.textContent = field.name + ':';
 
@@ -191,11 +216,13 @@
 
         function createNumberElement(field) {
             const input = document.createElement('input');
+            input.className = 'mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6';
             input.type = 'number';
             input.name = field.name.toLowerCase().replace(/\s+/g, '-');
             input.id = input.name;
 
             const label = document.createElement('label');
+            label.className = 'block text-sm font-medium leading-6 text-gray-900';
             label.htmlFor = input.id;
             label.textContent = field.name + ':';
 
@@ -277,10 +304,12 @@
             const title = document.getElementById('title').value.trim();
             const content = document.getElementById('content').value.trim();
             const token = document.getElementById('token').value.trim();
+            const organization = document.getElementById('organization').value.trim();
+            const projectNumber = document.getElementById('project-number').value.trim();
             const images = Array.from(imageUrlInput.files).map(file => URL.createObjectURL(file));
 
             if (!title || !content || !token) {
-                resultDiv.textContent = 'Error: All fields except Hours Estimated are required.';
+                resultDiv.innerHTML = '<div class="class="pointer-events-auto flex items-center justify-between gap-x-6 bg-red-400 px-6 py-2.5 sm:rounded-xl sm:py-3 sm:pl-4 sm:pr-3.5 text-sm leading-6 text-white">Error: All fields except Hours Estimated are required.</div>';
                 return;
             }
 
@@ -345,21 +374,52 @@
 
                 await updateProjectFields(token, itemId, fieldsToUpdate);
 
-                resultDiv.textContent = `Card created successfully! ID: ${itemId}`;
+                resultDiv.innerHTML = `<div class="class="pointer-events-auto flex items-center justify-between gap-x-6 bg-green-400 px-6 py-2.5 sm:rounded-xl sm:py-3 sm:pl-4 sm:pr-3.5 text-sm leading-6 text-white">Card created successfully! ID: ${title}</div>`;
             } catch (error) {
-                resultDiv.textContent = `Error creating card: ${error.message}`;
+                resultDiv.innerHTML = `<div class="class="pointer-events-auto flex items-center justify-between gap-x-6 bg-red-400 px-6 py-2.5 sm:rounded-xl sm:py-3 sm:pl-4 sm:pr-3.5 text-sm leading-6 text-white">Error creating card: ${error.message}</div>`;
             }
         });
 
         if (localStorage.getItem('token')) {
-            document.getElementById('token').value = localStorage.getItem('token');
-            populateForm(localStorage.getItem('token'));
+          document.getElementById('token').value = localStorage.getItem('token');
+        }
+        if(localStorage.getItem('project-number')) {
+          projectNumber = parseInt(localStorage.getItem('project-number'));
+          document.getElementById('project-number').value = projectNumber;
+        }
+        if(localStorage.getItem('organization')) {
+          organization = localStorage.getItem('organization');
+          document.getElementById('organization').value = organization;
         }
 
-        document.getElementById('token').addEventListener('change', (e) => {
-            populateForm(e.target.value);
-            localStorage.setItem('token', e.target.value);
-        });
+        if(localStorage.getItem('token') && localStorage.getItem('project-number') && localStorage.getItem('organization')) {
+          populateForm(localStorage.getItem('token'));
+        }
+
+      function checkAndPopulateForm() {
+        const token = localStorage.getItem('token');
+        const projectNumber = localStorage.getItem('project-number');
+        const organization = localStorage.getItem('organization');
+
+        if (token && projectNumber && organization) {
+            populateForm(token);
+        }
+      }
+
+      document.getElementById('token').addEventListener('change', (e) => {
+        localStorage.setItem('token', e.target.value);
+        checkAndPopulateForm();
+      });
+
+      document.getElementById('project-number').addEventListener('change', (e) => {
+        localStorage.setItem('project-number', e.target.value);
+        checkAndPopulateForm();
+      });
+
+      document.getElementById('organization').addEventListener('change', (e) => {
+        localStorage.setItem('organization', e.target.value);
+        checkAndPopulateForm();
+      });
     </script>
 </body>
 </html>
