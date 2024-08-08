@@ -1,4 +1,4 @@
-# GitHub Project Card Creator
+# Otis 🐐 - GitHub Project Card Creator
 
 Used to build GitHub Project cards
 
