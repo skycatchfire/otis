@@ -148,7 +148,7 @@
           {
             id: '1',
             title: "Component - COPY ME",
-            content: "### Requirements\n\n- [ ] Check comments in Invision for requirements\n\n\n### CMS\n- [ ] Build ACF Group\n- [ ] Build Group Fields\n- [ ] Set section to \"inactive\" so it only shows when added to page sections\n- [ ] Add To page sections\n- [ ] Add aq_resize` to images ex: <?php print aq_resize($image['url'], 450, 450, true); ?>\n- [ ] Add Content Tab, Settings Tab and settings fields. (if applicable)\n\n\n### Development\n- [ ] Develop Desktop\n- [ ] Develop Tablet\n- [ ] Develop Mobile\n- [ ] Find and develop all variants\n- [ ] Add section to appropriate pages on Dev site\n- [ ] If using background image, add role=\"img\" and aria-label attribute value to element\n- [ ] Never use the_field(). Only use get_field()\n- [ ] Apply HTML escaping wherever HTML is rendered by ACF.\n- [ ] escape and hardcoded text. _e('the text', 'fire');\n\n\n### Testing\n- [ ] **Test multiple variations for sections.** Try things like different copy length, with and without images, etc. Try to break the section, by using it how it wasn't intended. Don't assume the mock will always be how it's used.\n- [ ] Check aXe for general accessibility & semantics (ADA).\n- [ ] Test Large Desktop (1920)\n- [ ] Test Medium Desktop (1440)\n- [ ] Test Small Desktop (1280)\n- [ ] Test Desktop: Chrome\n- [ ] Test Desktop: FireFox\n- [ ] Test Desktop: Safari\n- [ ] Test Desktop: Edge\n- [ ] Test iPad\n- [ ] Test iPhone\n- [ ] Test Android\n- [ ] Run npm run build and make sure nothing you need got purged",
+            content: "### Requirements\n- [ ] Check comments in Invision for requirements\n### CMS\n- [ ] Build ACF Group\n- [ ] Build Group Fields\n- [ ] Set section to \"inactive\" so it only shows when added to page sections\n- [ ] Add To page sections\n- [ ] Add `aq_resize` to images ex: `<?php print aq_resize($image['url'], 450, 450, true); ?>`\n- [ ] Add `Content Tab`, `Settings Tab` and settings fields. (if applicable)\n### Development\n- [ ] Develop Desktop\n- [ ] Develop Tablet\n- [ ] Develop Mobile\n- [ ] Find and develop all variants\n- [ ] Add section to appropriate pages on Dev site\n- [ ] If using background image, add role=\"img\" and aria-label attribute value to element\n- [ ] Never use `the_field()`. Only use `get_field()`\n- [ ] Apply HTML escaping wherever HTML is rendered by ACF.\n- [ ] escape and hardcoded text. `_e('the text', 'fire');`\n\n\n### Testing\n- [ ] **Test multiple variations for sections.** Try things like different copy length, with and without images, etc. Try to break the section, by using it how it wasn't intended. Don't assume the mock will always be how it's used.\n- [ ] Check aXe for general accessibility & semantics (ADA).\n- [ ] Test Large Desktop (1920)\n- [ ] Test Medium Desktop (1440)\n- [ ] Test Small Desktop (1280)\n- [ ] Test Desktop: Chrome\n- [ ] Test Desktop: FireFox\n- [ ] Test Desktop: Safari\n- [ ] Test Desktop: Edge\n- [ ] Test iPad\n- [ ] Test iPhone\n- [ ] Test Android\n- [ ] Run `npm run build` and make sure nothing you need got purged",
             presetCustomFields: {
               status: [{id:"c864437f", fieldName: 'status'}],
               cardType: [{id:"584e2e10", fieldName: 'card-type'}],
@@ -378,13 +378,12 @@
                 resultDiv.style = 'background-color: rgb(248 113 113); display: flex;';
                 return;
             }
-
             const mutation = `
             mutation {
               addProjectV2DraftIssue(input: {
                 projectId: "${projectID}",
-                title: "${title}",
-                body: "${content}",
+                title: "${title.replace(/"/g, '\\"')}",
+                body: ${JSON.stringify(content)},
               }) {
                 projectItem {
                   id
@@ -442,7 +441,6 @@
                             }
                         }
                     });
-                console.log(fieldsToUpdate);
 
 
                 await updateProjectFields(token, itemId, fieldsToUpdate);
