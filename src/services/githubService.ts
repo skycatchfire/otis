@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { GitHubIssueTemplate } from '../types';
 
 const GITHUB_API_URL = 'https://api.github.com';
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
@@ -13,7 +14,7 @@ export const createGraphQLClient = (credentials: GitHubCredentials) => {
   return axios.create({
     baseURL: GITHUB_GRAPHQL_URL,
     headers: {
-      'Authorization': `bearer ${credentials.token}`,
+      Authorization: `bearer ${credentials.token}`,
       'Content-Type': 'application/json',
     },
   });
@@ -23,13 +24,13 @@ export const createApiClient = (credentials: GitHubCredentials) => {
   return axios.create({
     baseURL: GITHUB_API_URL,
     headers: {
-      'Authorization': `token ${credentials.token}`,
-      'Accept': 'application/vnd.github.v3+json',
+      Authorization: `token ${credentials.token}`,
+      Accept: 'application/vnd.github.v3+json',
     },
   });
 };
 
-const handleGitHubError = (error: any) => {
+const handleGitHubError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (error.response) {
       // Server responded with an error status
@@ -61,7 +62,7 @@ export const testGitHubConnection = async (credentials: GitHubCredentials) => {
         }
       }
     `;
-    
+
     await client.post('', {
       query,
       variables: { org: credentials.organization },
@@ -115,20 +116,28 @@ export const fetchProjects = async (credentials: GitHubCredentials, searchQuery:
       throw new Error(response.data.errors[0].message);
     }
 
+    type ProjectNode = {
+      id: string;
+      number: number;
+      title: string;
+      closed: boolean;
+      repositories: { nodes: Array<{ id: string; name: string }> };
+    };
+
     const projects = (response.data.data.organization?.projectsV2?.nodes || [])
-      .filter((project: any) => project && !project.closed)
-      .map((project: any) => ({
-        id: project?.id,
-        number: project?.number,
-        name: project?.title,
-        repositories: (project?.repositories?.nodes || [])
-          .filter((repo: any) => repo && repo.id && repo.name)
-          .map((repo: any) => ({
+      .filter((project: ProjectNode) => project && !project.closed)
+      .map((project: ProjectNode) => ({
+        id: project.id,
+        number: project.number,
+        name: project.title,
+        repositories: (project.repositories?.nodes || [])
+          .filter((repo: { id: string; name: string }) => repo && repo.id && repo.name)
+          .map((repo: { id: string; name: string }) => ({
             id: repo.id,
             name: repo.name,
           })),
       }))
-      .filter((project: any) => project.id && project.number && project.name);
+      .filter((project: { id: string; number: number; name: string }) => project.id && project.number && project.name);
 
     return projects;
   } catch (error) {
@@ -141,26 +150,36 @@ export const fetchProjects = async (credentials: GitHubCredentials, searchQuery:
 export const fetchIssueTemplates = async (credentials: GitHubCredentials, repoName: string) => {
   try {
     const client = createApiClient(credentials);
-    const response = await client.get(`/repos/${credentials.organization}/${repoName}/contents/.github/ISSUE_TEMPLATE`);
-    
+    const response = await client.get<GitHubIssueTemplate[]>(`/repos/${credentials.organization}/${repoName}/contents/.github/ISSUE_TEMPLATE`);
+
     const templates = await Promise.all(
-      response.data.map(async (file: any) => {
+      response.data.map(async (file: GitHubIssueTemplate) => {
         if (file && file.type === 'file' && (file.name.endsWith('.md') || file.name.endsWith('.yaml') || file.name.endsWith('.yml'))) {
-          // Use fetch for raw content instead of axios client
-          const rawResponse = await fetch(file.download_url, {
-            headers: {
-              'Authorization': `token ${credentials.token}`
+          // Fetch file content using the API (not raw URL)
+          const fileResponse = await client.get<GitHubIssueTemplate>(
+            `/repos/${credentials.organization}/${repoName}/contents/.github/ISSUE_TEMPLATE/${file.name}`
+          );
+          const { content, encoding } = fileResponse.data;
+          let decodedContent = content;
+          if (encoding === 'base64') {
+            if (typeof window !== 'undefined' && window.atob) {
+              decodedContent = window.atob(content.replace(/\n/g, ''));
+            } else {
+              // Use a type-safe check for Buffer in Node.js environments
+              const BufferCtor =
+                typeof (globalThis as unknown as { Buffer?: unknown }).Buffer !== 'undefined'
+                  ? ((globalThis as unknown as { Buffer?: unknown }).Buffer as {
+                      from: (input: string, encoding: string) => { toString: (encoding: string) => string };
+                    })
+                  : undefined;
+              if (BufferCtor) {
+                decodedContent = BufferCtor.from(content, 'base64').toString('utf-8');
+              }
             }
-          });
-          
-          if (!rawResponse.ok) {
-            throw new Error(`Failed to fetch template content: ${rawResponse.statusText}`);
           }
-          
-          const content = await rawResponse.text();
           return {
             name: file.name.replace(/\.(md|yaml|yml)$/, ''),
-            content,
+            content: decodedContent,
             path: file.path,
           };
         }
@@ -215,15 +234,22 @@ export const fetchProjectFields = async (credentials: GitHubCredentials, project
       throw new Error('No project found with ID: ' + projectId);
     }
 
+    type ProjectFieldNode = {
+      id: string;
+      name: string;
+      dataType: string;
+      options?: Array<{ id: string; name: string }>;
+    };
+
     return (response.data.data.node.fields?.nodes || [])
-      .filter((field: any) => field && field.dataType !== 'TITLE')
-      .map((field: any) => ({
-        id: field?.id,
-        name: field?.name,
-        type: field?.dataType,
-        options: field?.options || [],
+      .filter((field: ProjectFieldNode) => field && field.dataType !== 'TITLE')
+      .map((field: ProjectFieldNode) => ({
+        id: field.id,
+        name: field.name,
+        type: field.dataType,
+        options: field.options || [],
       }))
-      .filter((field: any) => field.id && field.name && field.type);
+      .filter((field: ProjectFieldNode) => field.id && field.name && field.dataType);
   } catch (error) {
     console.error('Failed to fetch project fields:', error);
     handleGitHubError(error);
@@ -231,7 +257,7 @@ export const fetchProjectFields = async (credentials: GitHubCredentials, project
   }
 };
 
-export const createProjectItem = async (credentials: GitHubCredentials, issue: { title: string; body: string; fields?: Record<string, any> }) => {
+export const createProjectItem = async (credentials: GitHubCredentials, issue: { title: string; body: string; fields?: Record<string, unknown> }) => {
   try {
     const client = createGraphQLClient(credentials);
     const query = `
@@ -282,7 +308,7 @@ export const createProjectItem = async (credentials: GitHubCredentials, issue: {
   }
 };
 
-export const updateProjectItemField = async (credentials: GitHubCredentials, itemId: string, fieldId: string, value: any) => {
+export const updateProjectItemField = async (credentials: GitHubCredentials, itemId: string, fieldId: string, value: unknown) => {
   try {
     const client = createGraphQLClient(credentials);
     const query = `
@@ -322,29 +348,29 @@ export const updateProjectItemField = async (credentials: GitHubCredentials, ite
 
 export const createBatchProjectItems = async (
   credentials: GitHubCredentials,
-  issues: Array<{ title: string; body: string; fields?: Record<string, any> }>,
+  issues: Array<{ title: string; body: string; fields?: Record<string, unknown> }>,
   onProgress?: (completed: number, total: number) => void
 ) => {
   const results = [];
   const total = issues.length;
-  
+
   for (let i = 0; i < issues.length; i++) {
     try {
       const issue = issues[i];
       const result = await createProjectItem(credentials, issue);
       results.push({ success: true, data: result });
-      
+
       if (onProgress) {
         onProgress(i + 1, total);
       }
     } catch (error) {
       results.push({ success: false, error, issue: issues[i] });
-      
+
       if (onProgress) {
         onProgress(i + 1, total);
       }
     }
   }
-  
+
   return results;
 };

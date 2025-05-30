@@ -30,23 +30,17 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4">
-        <h3 className="text-lg font-semibold mb-4">Confirm Issue Creation</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
+    <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+      <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4'>
+        <h3 className='text-lg font-semibold mb-4'>Confirm Issue Creation</h3>
+        <p className='text-gray-600 dark:text-gray-400 mb-6'>
           Are you sure you want to create {issueCount} issues in project #{projectNumber}? This action cannot be undone.
         </p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            className="btn btn-secondary"
-          >
+        <div className='flex justify-end gap-3'>
+          <button onClick={onCancel} className='btn btn-secondary'>
             Cancel
           </button>
-          <button
-            onClick={onConfirm}
-            className="btn btn-primary"
-          >
+          <button onClick={onConfirm} className='btn btn-primary'>
             Create Issues
           </button>
         </div>
@@ -73,7 +67,7 @@ const IssueCreator: React.FC = () => {
     }
   );
 
-  const selectedProject = projects.find(p => p.id === settings.projectNumber);
+  const selectedProject = projects.find((p) => p.id === settings.projectNumber);
 
   const addNewIssue = (issue: IssueRow) => {
     setIssues((prev) => [...prev, issue]);
@@ -87,9 +81,7 @@ const IssueCreator: React.FC = () => {
   };
 
   const updateIssue = (id: string, updates: Partial<IssueRow>) => {
-    setIssues((prev) =>
-      prev.map((issue) => (issue.id === id ? { ...issue, ...updates } : issue))
-    );
+    setIssues((prev) => prev.map((issue) => (issue.id === id ? { ...issue, ...updates } : issue)));
   };
 
   const exportToJson = () => {
@@ -100,14 +92,14 @@ const IssueCreator: React.FC = () => {
 
     const dataStr = JSON.stringify(issues, null, 2);
     const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
-    
+
     const exportFileDefaultName = `github-issues-${new Date().toISOString().slice(0, 10)}.json`;
-    
+
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
-    
+
     toast.success('Issues exported successfully');
   };
 
@@ -146,18 +138,14 @@ const IssueCreator: React.FC = () => {
   const handleSubmitIssues = async () => {
     setIsSubmitting(true);
     try {
-      const formattedIssues = issues.map(issue => ({
+      const formattedIssues = issues.map((issue) => ({
         title: issue.title,
         body: issue.description,
       }));
 
-      await createBatchProjectItems(
-        settings,
-        formattedIssues,
-        (completed, total) => {
-          toast.success(`Created ${completed} of ${total} issues`);
-        }
-      );
+      await createBatchProjectItems(settings, formattedIssues, (completed, total) => {
+        toast.success(`Created ${completed} of ${total} issues`);
+      });
 
       setIssues([]);
       toast.success('All issues created successfully');
@@ -170,31 +158,32 @@ const IssueCreator: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Bulk Issue Creator</h2>
-          
-          <div className="flex flex-wrap gap-2">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
+    <div className='space-y-6'>
+      <div className='card'>
+        <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
+          <h2 className='text-xl font-bold'>Bulk Issue Creator</h2>
+
+          <div className='flex flex-wrap gap-2'>
+            <div className='relative'>
+              <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
+                <Search className='h-4 w-4 text-gray-400' />
               </div>
               <input
-                type="text"
-                placeholder="Search projects..."
+                type='text'
+                placeholder='Search projects...'
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
-                className="input pl-10 py-1 text-sm w-full min-w-[250px]"
+                className='input pl-10 py-1 text-sm w-full min-w-[250px]'
               />
             </div>
+
             <select
               value={settings.projectNumber}
               onChange={(e) => updateSettings({ ...settings, projectNumber: e.target.value })}
-              className="input py-1 px-3 min-w-[200px]"
+              className='input py-1 px-3 min-w-[200px]'
               disabled={isLoadingProjects}
             >
-              <option value="">Select project</option>
+              <option value=''>Select project</option>
               {projects.map((project: any) => (
                 <option key={project.id} value={project.id}>
                   {project.name} (#{project.number})
@@ -203,12 +192,8 @@ const IssueCreator: React.FC = () => {
             </select>
 
             {selectedProject && (
-              <select
-                value={selectedRepo}
-                onChange={(e) => setSelectedRepo(e.target.value)}
-                className="input py-1 px-3 min-w-[200px]"
-              >
-                <option value="">Select repository for templates</option>
+              <select value={selectedRepo} onChange={(e) => setSelectedRepo(e.target.value)} className='input py-1 px-3 min-w-[200px]'>
+                <option value=''>Select repository for templates</option>
                 {selectedProject.repositories.map((repo: any) => (
                   <option key={repo.id} value={repo.name}>
                     {repo.name}
@@ -219,63 +204,39 @@ const IssueCreator: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={() => setIsFormOpen(true)}
-            className="btn btn-primary flex items-center gap-1"
-          >
-            <PlusCircle className="w-4 h-4" /> Add Issue
+        <div className='flex flex-wrap gap-2 mb-4'>
+          <button onClick={() => setIsFormOpen(true)} className='btn btn-primary flex items-center gap-1'>
+            <PlusCircle className='w-4 h-4' /> Add Issue
           </button>
-          
-          <button
-            onClick={exportToJson}
-            className="btn btn-secondary flex items-center gap-1"
-            disabled={issues.length === 0}
-          >
-            <Download className="w-4 h-4" /> Export
+
+          <button onClick={exportToJson} className='btn btn-secondary flex items-center gap-1' disabled={issues.length === 0}>
+            <Download className='w-4 h-4' /> Export
           </button>
-          
-          <label className="btn btn-secondary flex items-center gap-1 cursor-pointer">
-            <Upload className="w-4 h-4" /> Import
-            <input
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={importFromJson}
-            />
+
+          <label className='btn btn-secondary flex items-center gap-1 cursor-pointer'>
+            <Upload className='w-4 h-4' /> Import
+            <input type='file' accept='.json' className='hidden' onChange={importFromJson} />
           </label>
-          
+
           <button
             onClick={handleSubmitConfirm}
-            className="btn btn-primary flex items-center gap-1 ml-auto"
+            className='btn btn-primary flex items-center gap-1 ml-auto'
             disabled={issues.length === 0 || !settings.projectNumber || isSubmitting}
           >
-            <Send className="w-4 h-4" /> Submit All Issues
+            <Send className='w-4 h-4' /> Submit All Issues
           </button>
         </div>
 
         {issues.length > 0 ? (
-          <IssueTable
-            issues={issues}
-            onUpdate={updateIssue}
-            onDelete={removeIssue}
-          />
+          <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} />
         ) : (
-          <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400">
-              No issues added yet. Add your first issue to get started.
-            </p>
+          <div className='text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg'>
+            <p className='text-gray-500 dark:text-gray-400'>No issues added yet. Add your first issue to get started.</p>
           </div>
         )}
       </div>
 
-      {isFormOpen && (
-        <IssueForm
-          onSubmit={addNewIssue}
-          onCancel={() => setIsFormOpen(false)}
-          selectedRepo={selectedRepo}
-        />
-      )}
+      {isFormOpen && <IssueForm onSubmit={addNewIssue} onCancel={() => setIsFormOpen(false)} selectedRepo={selectedRepo} />}
 
       <ConfirmDialog
         isOpen={isConfirmOpen}
