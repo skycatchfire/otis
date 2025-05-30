@@ -396,7 +396,7 @@ export const createBatchProjectItems = async (
 export const createBatchRepoIssuesAndAddToProject = async (
   credentials: GitHubCredentials,
   repoName: string,
-  issues: Array<{ title: string; body: string; fields?: Record<string, unknown> }>,
+  issues: Array<{ title: string; body: string; fields?: Record<string, unknown>; images?: File[] }>,
   onProgress?: (completed: number, total: number) => void
 ) => {
   const results = [];
@@ -448,7 +448,30 @@ export const createBatchRepoIssuesAndAddToProject = async (
       if (!itemId) {
         throw new Error('Failed to add issue to project: No item ID returned');
       }
-      // 3. Update fields if provided
+      // 3. If there are images, upload them and update the issue body
+      let updatedBody = createdIssue.body || '';
+      console.log('issue.images', issue.images);
+      if (issue.images && Array.isArray(issue.images) && issue.images.length > 0) {
+        for (const file of issue.images) {
+          try {
+            const uploadResult = await uploadImageToIssue(credentials, repoName, createdIssue.number, file);
+            if (uploadResult && uploadResult.markdown) {
+              updatedBody += (updatedBody ? '\n' : '') + uploadResult.markdown;
+              showToast(`Image uploaded for issue #${createdIssue.number}`, 'success');
+            }
+          } catch (e) {
+            showToast(`Failed to upload image for issue #${createdIssue.number}: ${e instanceof Error ? e.message : e}`, 'error');
+          }
+        }
+        // Update the issue body if images were added
+        try {
+          await updateIssueBody(credentials, repoName, createdIssue.number, updatedBody);
+          showToast(`Updated issue #${createdIssue.number} with images`, 'success');
+        } catch (e) {
+          showToast(`Failed to update issue #${createdIssue.number} with images: ${e instanceof Error ? e.message : e}`, 'error');
+        }
+      }
+      // 4. Update fields if provided
       if (issue.fields) {
         for (const [fieldId, value] of Object.entries(issue.fields)) {
           if (fieldId && value !== undefined) {
@@ -472,3 +495,52 @@ export const createBatchRepoIssuesAndAddToProject = async (
   }
   return results;
 };
+
+// Helper to upload an image to the GitHub uploads endpoint for an issue
+const uploadImageToIssue = async (credentials: GitHubCredentials, repoName: string, issueNumber: number, file: File) => {
+  const url = `https://uploads.github.com/repos/${credentials.organization}/${repoName}/issues/${issueNumber}/comments/assets`;
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `token ${credentials.token}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error('Failed to upload image to GitHub');
+  }
+  return await response.json(); // { url, markdown }
+};
+
+// Helper to update the issue body
+const updateIssueBody = async (credentials: GitHubCredentials, repoName: string, issueNumber: number, newBody: string) => {
+  const url = `${GITHUB_API_URL}/repos/${credentials.organization}/${repoName}/issues/${issueNumber}`;
+  await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `token ${credentials.token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ body: newBody }),
+  });
+};
+
+// Helper to show toast notifications (works in browser)
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  if (typeof window !== 'undefined') {
+    const toast = (window as Window & { toast?: Record<string, (msg: string) => void> }).toast;
+    if (toast) {
+      toast[type](message);
+    } else {
+      if (type === 'error') {
+        console.error(message);
+      } else {
+        console.log(message);
+      }
+    }
+  }
+}
