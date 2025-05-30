@@ -5,13 +5,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { useQuery } from 'react-query';
 import { useSettingsStore } from '../stores/settingsStore';
 import { fetchProjectFields, fetchIssueTemplates } from '../services/githubService';
-import { IssueRow } from './IssueCreator';
+import { IssueRow as BaseIssueRow } from './IssueCreator';
 import { GitHubIssueTemplate, GitHubProjectField } from '../types';
 import yaml from 'js-yaml';
 
 interface IssueFormProps {
-  initialData?: Partial<IssueRow>;
-  onSubmit: (issue: IssueRow) => void;
+  initialData?: Partial<BaseIssueRow>;
+  onSubmit: (issue: BaseIssueRow) => void;
   onCancel: () => void;
   selectedRepo?: string;
 }
@@ -21,7 +21,7 @@ interface ParsedTemplate extends GitHubIssueTemplate {
   parsed: {
     body: Array<{ attributes?: { value?: string } }>;
     name: string;
-  };
+  } | null;
 }
 
 // Helper type guard for parsed template
@@ -34,6 +34,11 @@ function hasName(obj: unknown): obj is { name: string } {
   return (
     typeof obj === 'object' && obj !== null && 'name' in (obj as Record<string, unknown>) && typeof (obj as Record<string, unknown>).name === 'string'
   );
+}
+
+// Extend IssueRow to allow a 'fields' property for form submission
+interface IssueRowWithFields extends BaseIssueRow {
+  fields?: Record<string, unknown>;
 }
 
 const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, selectedRepo }) => {
@@ -58,7 +63,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
         try {
           const parsed: unknown = yaml.load(template.content);
-          return { ...template, parsed };
+          return { ...template, parsed: parsed as { body: Array<{ attributes?: { value?: string } }>; name: string } };
         } catch (e) {
           console.error(`Failed to parse YAML for template ${template.name}:`, e);
           return { ...template, parsed: null };
@@ -73,7 +78,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     handleSubmit,
     setValue,
     formState: { errors },
-  } = useForm<IssueRow>({
+  } = useForm<BaseIssueRow>({
     defaultValues: {
       id: initialData?.id || uuidv4(),
       title: initialData?.title || '',
@@ -99,16 +104,29 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     }
   };
 
-  const onFormSubmit = (data: IssueRow) => {
-    onSubmit({
-      ...data,
-      labels: data.labels || [],
+  const onFormSubmit = (data: BaseIssueRow) => {
+    // Collect project field values into a 'fields' object
+    const fieldsObj: Record<string, unknown> = {};
+    fields.forEach((field: GitHubProjectField) => {
+      if (data[field.id as keyof BaseIssueRow] !== undefined && data[field.id as keyof BaseIssueRow] !== '') {
+        fieldsObj[field.id] = data[field.id as keyof BaseIssueRow];
+      }
     });
+    // Remove project field keys from the top-level data
+    const cleanedData: Record<string, unknown> = { ...data };
+    fields.forEach((field: GitHubProjectField) => {
+      delete cleanedData[field.id];
+    });
+    onSubmit({
+      ...(cleanedData as unknown as BaseIssueRow),
+      labels: data.labels || [],
+      fields: Object.keys(fieldsObj).length > 0 ? fieldsObj : undefined,
+    } as IssueRowWithFields);
   };
 
   const renderField = (field: GitHubProjectField) => {
     // Use field.id as the key for registration to avoid TS error
-    const fieldProps = register(field.id as keyof IssueRow);
+    const fieldProps = register(field.id as keyof BaseIssueRow);
 
     switch (field.type) {
       case 'SINGLE_SELECT':

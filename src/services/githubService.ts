@@ -293,13 +293,7 @@ export const createProjectItem = async (credentials: GitHubCredentials, issue: {
       throw new Error('Failed to create project item: No item ID returned');
     }
 
-    if (issue.fields) {
-      for (const [fieldId, value] of Object.entries(issue.fields)) {
-        if (fieldId && value !== undefined) {
-          await updateProjectItemField(credentials, itemId, fieldId, value);
-        }
-      }
-    }
+    // Do not update fields here; handled in batch function where field types are known
 
     return response.data.data.addProjectV2DraftIssue.projectItem;
   } catch (error) {
@@ -309,11 +303,28 @@ export const createProjectItem = async (credentials: GitHubCredentials, issue: {
   }
 };
 
-export const updateProjectItemField = async (credentials: GitHubCredentials, itemId: string, fieldId: string, value: unknown) => {
+export const updateProjectItemField = async (credentials: GitHubCredentials, itemId: string, fieldId: string, value: unknown, fieldType: string) => {
   try {
     const client = createGraphQLClient(credentials);
+    let formattedValue: Record<string, unknown>;
+    // Format value based on field type
+    switch (fieldType) {
+      case 'SINGLE_SELECT':
+        formattedValue = { singleSelectOptionId: value };
+        break;
+      case 'NUMBER':
+        formattedValue = { number: Number(value) };
+        break;
+      case 'DATE':
+        formattedValue = { date: value };
+        break;
+      case 'TEXT':
+      default:
+        formattedValue = { text: value };
+        break;
+    }
     const query = `
-      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
+      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
         updateProjectV2ItemFieldValue(input: {
           projectId: $projectId
           itemId: $itemId
@@ -326,17 +337,15 @@ export const updateProjectItemField = async (credentials: GitHubCredentials, ite
         }
       }
     `;
-
     const response = await client.post('', {
       query,
       variables: {
         projectId: credentials.projectId,
         itemId,
         fieldId,
-        value: JSON.stringify(value),
+        value: formattedValue,
       },
     });
-
     if (response.data.errors) {
       throw new Error(response.data.errors[0].message);
     }
@@ -373,5 +382,93 @@ export const createBatchProjectItems = async (
     }
   }
 
+  return results;
+};
+
+/**
+ * Batch create issues in a repository and add them to a project (as real issues, not draft issues).
+ * @param credentials GitHub credentials (must include organization, projectId, token)
+ * @param repoName The repository name to create issues in
+ * @param issues Array of issues: { title, body, fields? }
+ * @param onProgress Optional progress callback
+ * @returns Array of results: { success, data } or { success, error, issue }
+ */
+export const createBatchRepoIssuesAndAddToProject = async (
+  credentials: GitHubCredentials,
+  repoName: string,
+  issues: Array<{ title: string; body: string; fields?: Record<string, unknown> }>,
+  onProgress?: (completed: number, total: number) => void
+) => {
+  const results = [];
+  const total = issues.length;
+  const restClient = createApiClient(credentials);
+  const gqlClient = createGraphQLClient(credentials);
+
+  // Fetch project fields to get types/options
+  const projectFields: Array<{ id: string; type: string; options?: Array<{ id: string; name: string }> }> = await fetchProjectFields(
+    credentials,
+    credentials.projectId
+  );
+  const fieldTypeMap: Record<string, { type: string; options?: Array<{ id: string; name: string }> }> = {};
+  projectFields.forEach((f: { id: string; type: string; options?: Array<{ id: string; name: string }> }) => {
+    fieldTypeMap[f.id] = { type: f.type, options: f.options };
+  });
+
+  for (let i = 0; i < issues.length; i++) {
+    try {
+      const issue = issues[i];
+      // 1. Create the issue in the repo
+      const createIssueResp = await restClient.post(`/repos/${credentials.organization}/${repoName}/issues`, {
+        title: issue.title,
+        body: issue.body,
+      });
+      const createdIssue = createIssueResp.data;
+      if (!createdIssue || !createdIssue.node_id) {
+        throw new Error('Failed to create issue in repo or missing node_id');
+      }
+      // 2. Add the issue to the project
+      const addToProjectMutation = `
+        mutation($projectId: ID!, $contentId: ID!) {
+          addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+            item { id }
+          }
+        }
+      `;
+      const addToProjectResp = await gqlClient.post('', {
+        query: addToProjectMutation,
+        variables: {
+          projectId: credentials.projectId,
+          contentId: createdIssue.node_id,
+        },
+      });
+      if (addToProjectResp.data.errors) {
+        throw new Error(addToProjectResp.data.errors[0].message);
+      }
+      const itemId = addToProjectResp.data.data.addProjectV2ItemById?.item?.id;
+      if (!itemId) {
+        throw new Error('Failed to add issue to project: No item ID returned');
+      }
+      // 3. Update fields if provided
+      if (issue.fields) {
+        for (const [fieldId, value] of Object.entries(issue.fields)) {
+          if (fieldId && value !== undefined) {
+            const fieldMeta = fieldTypeMap[fieldId];
+            if (fieldMeta) {
+              await updateProjectItemField(credentials, itemId, fieldId, value, fieldMeta.type);
+            }
+          }
+        }
+      }
+      results.push({ success: true, data: { issue: createdIssue, projectItemId: itemId } });
+      if (onProgress) {
+        onProgress(i + 1, total);
+      }
+    } catch (error) {
+      results.push({ success: false, error, issue: issues[i] });
+      if (onProgress) {
+        onProgress(i + 1, total);
+      }
+    }
+  }
   return results;
 };

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { PlusCircle, Trash2, Download, Upload, Send, Search } from 'lucide-react';
+import { PlusCircle, Download, Upload, Send, Search } from 'lucide-react';
 import { useQuery } from 'react-query';
 import toast from 'react-hot-toast';
 import { useSettingsStore } from '../stores/settingsStore';
-import { fetchProjects, createBatchProjectItems } from '../services/githubService';
+import { fetchProjects, createBatchRepoIssuesAndAddToProject } from '../services/githubService';
 import IssueTable from './IssueTable';
 import IssueForm from './IssueForm';
 
@@ -16,6 +16,7 @@ export interface IssueRow {
   assignee?: string;
   labels?: string[];
   estimate?: string;
+  fields?: Record<string, unknown>;
 }
 
 interface ConfirmDialogProps {
@@ -67,7 +68,7 @@ const IssueCreator: React.FC = () => {
     }
   );
 
-  const selectedProject = projects.find((p) => p.id === settings.projectId);
+  const selectedProject = projects.find((p: { id: string }) => p.id === settings.projectId);
 
   const addNewIssue = (issue: IssueRow) => {
     setIssues((prev) => [...prev, issue]);
@@ -113,7 +114,7 @@ const IssueCreator: React.FC = () => {
             const parsedIssues = JSON.parse(e.target.result as string) as IssueRow[];
             setIssues(parsedIssues);
             toast.success(`Imported ${parsedIssues.length} issues`);
-          } catch (error) {
+          } catch {
             toast.error('Failed to parse the imported file');
           }
         }
@@ -132,24 +133,30 @@ const IssueCreator: React.FC = () => {
       return;
     }
 
+    if (!selectedRepo) {
+      toast.error('Please select a repository');
+      return;
+    }
+
     setIsConfirmOpen(true);
   };
 
   const handleSubmitIssues = async () => {
     setIsSubmitting(true);
     try {
-      const formattedIssues = issues.map((issue) => ({
+      const formattedIssues = issues.map((issue: IssueRow) => ({
         title: issue.title,
         body: issue.description,
+        fields: issue.fields,
       }));
 
-      await createBatchProjectItems(settings, formattedIssues, (completed, total) => {
+      await createBatchRepoIssuesAndAddToProject(settings, selectedRepo, formattedIssues, (completed, total) => {
         toast.success(`Created ${completed} of ${total} issues`);
       });
 
       setIssues([]);
       toast.success('All issues created successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to create some issues. Please check the console for details.');
     } finally {
       setIsSubmitting(false);
@@ -184,7 +191,7 @@ const IssueCreator: React.FC = () => {
               disabled={isLoadingProjects}
             >
               <option value=''>Select project</option>
-              {projects.map((project: any) => (
+              {projects.map((project: { id: string; name: string; number: number }) => (
                 <option key={project.id} value={project.id}>
                   {project.name} (#{project.number})
                 </option>
@@ -194,7 +201,7 @@ const IssueCreator: React.FC = () => {
             {selectedProject && (
               <select value={selectedRepo} onChange={(e) => setSelectedRepo(e.target.value)} className='input py-1 px-3 min-w-[200px]'>
                 <option value=''>Select repository for templates</option>
-                {selectedProject.repositories.map((repo: any) => (
+                {selectedProject.repositories.map((repo: { id: string; name: string }) => (
                   <option key={repo.id} value={repo.name}>
                     {repo.name}
                   </option>
@@ -221,7 +228,7 @@ const IssueCreator: React.FC = () => {
           <button
             onClick={handleSubmitConfirm}
             className='btn btn-primary flex items-center gap-1 ml-auto'
-            disabled={issues.length === 0 || !settings.projectId || isSubmitting}
+            disabled={issues.length === 0 || !settings.projectId || !selectedRepo || isSubmitting}
           >
             <Send className='w-4 h-4' /> Submit All Issues
           </button>
