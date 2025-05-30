@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 interface Settings {
   organization: string;
-  projectNumber: string;
+  projectId: string;
   token: string;
   isValid: boolean;
 }
@@ -20,12 +20,12 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       settings: {
         organization: '',
-        projectNumber: '',
+        projectId: '',
         token: '',
         isValid: false,
       },
       isConfigured: false,
-      updateSettings: (newSettings, validConnection) => 
+      updateSettings: (newSettings, validConnection) =>
         set((state) => ({
           settings: {
             ...state.settings,
@@ -33,16 +33,16 @@ export const useSettingsStore = create<SettingsState>()(
             isValid: validConnection ?? state.settings.isValid,
           },
           isConfigured: Boolean(
-            newSettings.organization || state.settings.organization && 
-            newSettings.token || state.settings.token &&
-            (validConnection ?? state.settings.isValid)
+            newSettings.organization ||
+              (state.settings.organization && newSettings.token) ||
+              (state.settings.token && (validConnection ?? state.settings.isValid))
           ),
         })),
       clearSettings: () =>
         set({
           settings: {
             organization: '',
-            projectNumber: '',
+            projectId: '',
             token: '',
             isValid: false,
           },
@@ -54,7 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
       partialize: (state) => ({
         settings: {
           organization: state.settings.organization,
-          projectNumber: state.settings.projectNumber,
+          projectId: state.settings.projectId,
           token: state.settings.token,
           isValid: state.settings.isValid,
         },

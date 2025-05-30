@@ -6,7 +6,7 @@ const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
 
 interface GitHubCredentials {
   organization: string;
-  projectNumber: string;
+  projectId: string;
   token: string;
 }
 
@@ -241,6 +241,8 @@ export const fetchProjectFields = async (credentials: GitHubCredentials, project
       options?: Array<{ id: string; name: string }>;
     };
 
+    console.log(response.data.data.node.fields?.nodes);
+
     return (response.data.data.node.fields?.nodes || [])
       .filter((field: ProjectFieldNode) => field && field.dataType !== 'TITLE')
       .map((field: ProjectFieldNode) => ({
@@ -248,8 +250,7 @@ export const fetchProjectFields = async (credentials: GitHubCredentials, project
         name: field.name,
         type: field.dataType,
         options: field.options || [],
-      }))
-      .filter((field: ProjectFieldNode) => field.id && field.name && field.dataType);
+      }));
   } catch (error) {
     console.error('Failed to fetch project fields:', error);
     handleGitHubError(error);
@@ -277,7 +278,7 @@ export const createProjectItem = async (credentials: GitHubCredentials, issue: {
     const response = await client.post('', {
       query,
       variables: {
-        projectId: credentials.projectNumber,
+        projectId: credentials.projectId,
         title: issue.title,
         body: issue.body,
       },
@@ -329,7 +330,7 @@ export const updateProjectItemField = async (credentials: GitHubCredentials, ite
     const response = await client.post('', {
       query,
       variables: {
-        projectId: credentials.projectNumber,
+        projectId: credentials.projectId,
         itemId,
         fieldId,
         value: JSON.stringify(value),

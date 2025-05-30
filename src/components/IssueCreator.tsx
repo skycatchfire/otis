@@ -23,10 +23,10 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   issueCount: number;
-  projectNumber: string;
+  projectId: string;
 }
 
-const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCancel, issueCount, projectNumber }) => {
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCancel, issueCount, projectId }) => {
   if (!isOpen) return null;
 
   return (
@@ -34,7 +34,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
       <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4'>
         <h3 className='text-lg font-semibold mb-4'>Confirm Issue Creation</h3>
         <p className='text-gray-600 dark:text-gray-400 mb-6'>
-          Are you sure you want to create {issueCount} issues in project #{projectNumber}? This action cannot be undone.
+          Are you sure you want to create {issueCount} issues in project #{projectId}? This action cannot be undone.
         </p>
         <div className='flex justify-end gap-3'>
           <button onClick={onCancel} className='btn btn-secondary'>
@@ -67,7 +67,7 @@ const IssueCreator: React.FC = () => {
     }
   );
 
-  const selectedProject = projects.find((p) => p.id === settings.projectNumber);
+  const selectedProject = projects.find((p) => p.id === settings.projectId);
 
   const addNewIssue = (issue: IssueRow) => {
     setIssues((prev) => [...prev, issue]);
@@ -127,7 +127,7 @@ const IssueCreator: React.FC = () => {
       return;
     }
 
-    if (!settings.projectNumber) {
+    if (!settings.projectId) {
       toast.error('Please select a project');
       return;
     }
@@ -178,8 +178,8 @@ const IssueCreator: React.FC = () => {
             </div>
 
             <select
-              value={settings.projectNumber}
-              onChange={(e) => updateSettings({ ...settings, projectNumber: e.target.value })}
+              value={settings.projectId}
+              onChange={(e) => updateSettings({ ...settings, projectId: e.target.value })}
               className='input py-1 px-3 min-w-[200px]'
               disabled={isLoadingProjects}
             >
@@ -221,7 +221,7 @@ const IssueCreator: React.FC = () => {
           <button
             onClick={handleSubmitConfirm}
             className='btn btn-primary flex items-center gap-1 ml-auto'
-            disabled={issues.length === 0 || !settings.projectNumber || isSubmitting}
+            disabled={issues.length === 0 || !settings.projectId || isSubmitting}
           >
             <Send className='w-4 h-4' /> Submit All Issues
           </button>
@@ -243,7 +243,7 @@ const IssueCreator: React.FC = () => {
         onConfirm={handleSubmitIssues}
         onCancel={() => setIsConfirmOpen(false)}
         issueCount={issues.length}
-        projectNumber={settings.projectNumber}
+        projectId={settings.projectId}
       />
     </div>
   );

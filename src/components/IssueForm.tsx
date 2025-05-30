@@ -16,12 +16,32 @@ interface IssueFormProps {
   selectedRepo?: string;
 }
 
+// Define a type for parsed templates
+interface ParsedTemplate extends GitHubIssueTemplate {
+  parsed: {
+    body: Array<{ attributes?: { value?: string } }>;
+    name: string;
+  };
+}
+
+// Helper type guard for parsed template
+function hasBody(obj: unknown): obj is { body: Array<{ attributes?: { value?: string } }> } {
+  return (
+    typeof obj === 'object' && obj !== null && 'body' in (obj as Record<string, unknown>) && Array.isArray((obj as Record<string, unknown>).body)
+  );
+}
+function hasName(obj: unknown): obj is { name: string } {
+  return (
+    typeof obj === 'object' && obj !== null && 'name' in (obj as Record<string, unknown>) && typeof (obj as Record<string, unknown>).name === 'string'
+  );
+}
+
 const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, selectedRepo }) => {
-  const { settings } = useSettingsStore();
+  const { settings, isConfigured } = useSettingsStore();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
-  const { data: fields = [] } = useQuery(['projectFields', settings.projectNumber], () => fetchProjectFields(settings, settings.projectNumber), {
-    enabled: !!settings.projectNumber,
+  const { data: fields = [] } = useQuery(['projectFields', settings.projectId], () => fetchProjectFields(settings, settings.projectId), {
+    enabled: isConfigured && !!settings.projectId,
   });
 
   const { data: templates = [] } = useQuery(
@@ -33,7 +53,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
   );
 
   // Parse YAML templates into JSON objects
-  const parsedTemplates = useMemo(() => {
+  const parsedTemplates: ParsedTemplate[] = useMemo(() => {
     return (templates as GitHubIssueTemplate[]).map((template) => {
       if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
         try {
@@ -70,8 +90,11 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     setSelectedTemplate(templateName);
     if (templateName) {
       const template = parsedTemplates.find((t) => t?.name === templateName);
-      if (template) {
-        setValue('description', template.parsed?.body[0].attributes.value);
+      if (template && hasBody(template.parsed)) {
+        const body = template.parsed.body;
+        if (body[0]?.attributes?.value) {
+          setValue('description', body[0].attributes.value);
+        }
       }
     }
   };
@@ -84,27 +107,21 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
   };
 
   const renderField = (field: GitHubProjectField) => {
-    const fieldProps = register(field.name.toLowerCase());
+    // Use field.id as the key for registration to avoid TS error
+    const fieldProps = register(field.id as keyof IssueRow);
 
     switch (field.type) {
       case 'SINGLE_SELECT':
         return (
           <select id={field.id} className='input' {...fieldProps}>
             <option value=''>Select {field.name}</option>
-            {field.options.map((option: any) => (
+            {field.options.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.name}
               </option>
             ))}
           </select>
         );
-
-      case 'TEXT':
-      case 'NUMBER':
-        return <input id={field.id} type={field.type === 'NUMBER' ? 'number' : 'text'} className='input' {...fieldProps} />;
-
-      case 'DATE':
-        return <input id={field.id} type='date' className='input' {...fieldProps} />;
 
       default:
         return null;
@@ -130,9 +147,9 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
                 </label>
                 <select id='template' className='input' value={selectedTemplate} onChange={handleTemplateChange}>
                   <option value=''>Select a template</option>
-                  {parsedTemplates.map((template: GitHubIssueTemplate) => (
+                  {parsedTemplates.map((template: ParsedTemplate) => (
                     <option key={template.name} value={template.name}>
-                      {template.parsed?.name || template.name}
+                      {hasName(template.parsed) ? template.parsed.name : template.name}
                     </option>
                   ))}
                 </select>
@@ -165,15 +182,19 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
               )}
             </div>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              {fields.map((field: GitHubProjectField) => (
-                <div key={field.id}>
-                  <label htmlFor={field.id} className='label'>
-                    {field.name}
-                  </label>
-                  {renderField(field)}
-                </div>
-              ))}
+            <div className='grid grid-cols-1 gap-4'>
+              {fields.map((field: GitHubProjectField) => {
+                const rendered = renderField(field);
+                if (!rendered) return null;
+                return (
+                  <div key={field.id}>
+                    <label htmlFor={field.id} className='label'>
+                      {field.name}
+                    </label>
+                    {rendered}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

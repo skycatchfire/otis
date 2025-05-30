@@ -21,10 +21,10 @@ export interface GitHubIssueTemplate {
 }
 
 export interface GitHubProjectField {
-  id: number;
+  id: string;
   name: string;
-  url: string;
-  cards_url: string;
+  type: string;
+  options: Array<{ id: string; name: string }>;
 }
 
 export interface GitHubIssue {
