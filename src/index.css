@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 79, 70, 229;
+    --color-secondary: 14, 165, 233;
+    --color-accent: 139, 92, 246;
+    --color-success: 34, 197, 94;
+    --color-warning: 245, 158, 11;
+    --color-error: 239, 68, 68;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  .input {
+    @apply block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm 
+    focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 
+    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+  }
+
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
+  }
+}
+
+.grid-cell-editable:focus {
+  @apply outline-none ring-2 ring-indigo-500;
+}
+
+/* Data grid styling */
+.data-grid {
+  @apply w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden;
+}
+
+.data-grid-header {
+  @apply bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700;
+}
+
+.data-grid-header-cell {
+  @apply px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 select-none;
+}
+
+.data-grid-cell {
+  @apply px-4 py-3 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700;
+}
+
+.data-grid-row:hover {
+  @apply bg-gray-50 dark:bg-gray-800;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
