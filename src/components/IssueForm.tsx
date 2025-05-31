@@ -44,8 +44,6 @@ interface IssueRowWithFields extends BaseIssueRow {
 const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, selectedRepo }) => {
   const { settings, isConfigured } = useSettingsStore();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const { data: fields = [] } = useQuery(['projectFields', settings.projectId], () => fetchProjectFields(settings, settings.projectId), {
     enabled: isConfigured && !!settings.projectId,
@@ -74,23 +72,6 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       return { ...template, parsed: null };
     });
   }, [templates]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const fileArr = Array.from(files);
-    setSelectedImages((prev) => [...prev, ...fileArr]);
-    // Generate previews
-    fileArr.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setImagePreviews((prev) => [...prev, ev.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
 
   const {
     register,
@@ -140,8 +121,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       ...(cleanedData as unknown as BaseIssueRow),
       labels: data.labels || [],
       fields: Object.keys(fieldsObj).length > 0 ? fieldsObj : undefined,
-      images: selectedImages.length > 0 ? selectedImages : undefined,
-    } as IssueRowWithFields & { images?: File[] });
+    } as IssueRowWithFields);
   };
 
   const renderField = (field: GitHubProjectField) => {
@@ -228,16 +208,8 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
 
             <div>
               <label className='label'>Attach Images</label>
-              <div className='flex items-center gap-2'>
-                <input type='file' accept='image/*' multiple onChange={handleImageChange} />
-              </div>
-              {imagePreviews.length > 0 && (
-                <div className='flex flex-wrap gap-2 mt-2'>
-                  {imagePreviews.map((src, idx) => (
-                    <img key={idx} src={src} alt='selected' className='w-16 h-16 object-cover rounded border' />
-                  ))}
-                </div>
-              )}
+              <div className='flex items-center gap-2'>{/* Remove file input for images */}</div>
+              {/* Remove image previews */}
             </div>
 
             <div className='grid grid-cols-1 gap-4'>
