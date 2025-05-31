@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, Download, Upload, Send, Search, X } from 'lucide-react';
+import { PlusCircle, Download, Upload, Send, X, ChevronsUpDown, Check } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -9,8 +9,9 @@ import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { GitHubProjectField } from '../types';
 
 export interface IssueRow {
@@ -72,21 +73,16 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
 
 const IssueCreator: React.FC = () => {
   const { settings, updateSettings } = useSettingsStore();
-  const [projectSearch, setProjectSearch] = useState('');
   const [selectedRepo, setSelectedRepo] = useState<string>('');
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: projects = [] } = useQuery(
-    ['projects', settings.organization, settings.token, projectSearch],
-    () => fetchProjects(settings, projectSearch),
-    {
-      enabled: !!settings.organization && !!settings.token,
-      keepPreviousData: true,
-    }
-  );
+  const { data: projects = [] } = useQuery(['projects', settings.organization, settings.token], () => fetchProjects(settings), {
+    enabled: !!settings.organization && !!settings.token,
+    keepPreviousData: true,
+  });
 
   const { data: fields = [] } = useQuery<GitHubProjectField[]>(
     ['projectFields', settings.projectId],
@@ -200,32 +196,42 @@ const IssueCreator: React.FC = () => {
           <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
             <h2 className='sr-only'>Bulk Issue Creator</h2>
 
-            <div className='flex flex-wrap gap-2'>
-              <div className='relative'>
-                <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-                  <Search className='h-4 w-4 text-gray-400' />
-                </div>
-                <Input
-                  type='text'
-                  placeholder='Search projects...'
-                  value={projectSearch}
-                  onChange={(e) => setProjectSearch(e.target.value)}
-                  className='min-w-[250px] pl-10 py-1 text-sm'
-                />
-              </div>
-
-              <Select value={settings.projectId} onValueChange={(val) => updateSettings({ ...settings, projectId: val })}>
-                <SelectTrigger className='min-w-[200px]'>
-                  <SelectValue placeholder='Select project' />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project: { id: string; name: string; number: number }) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name} (#{project.number})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className='flex flex-wrap gap-2 min-w-[250px]'>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' role='combobox' aria-expanded={false} className='w-[250px] justify-between'>
+                    {settings.projectId
+                      ? projects.find((p: { id: string }) => p.id === settings.projectId)?.name +
+                        (projects.find((p: { id: string }) => p.id === settings.projectId)
+                          ? ` (#${projects.find((p: { id: string }) => p.id === settings.projectId)?.number})`
+                          : '')
+                      : 'Select project...'}
+                    <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-[250px] p-0'>
+                  <Command>
+                    <CommandInput placeholder='Search project...' />
+                    <CommandList>
+                      <CommandEmpty>No project found.</CommandEmpty>
+                      <CommandGroup>
+                        {projects.map((project: { id: string; name: string; number: number }) => (
+                          <CommandItem
+                            key={project.id}
+                            value={project.name}
+                            onSelect={() => {
+                              updateSettings({ ...settings, projectId: project.id });
+                            }}
+                          >
+                            {project.name} (#{project.number})
+                            <Check className={'ml-auto h-4 w-4' + (settings.projectId === project.id ? ' opacity-100' : ' opacity-0')} />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
 
               {selectedProject && (
                 <Select value={selectedRepo} onValueChange={setSelectedRepo}>
