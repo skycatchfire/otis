@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useQuery } from 'react-query';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface IssueFormProps {
   initialData?: Partial<BaseIssueRow>;
