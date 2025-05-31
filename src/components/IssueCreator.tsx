@@ -3,14 +3,15 @@ import { PlusCircle, Download, Upload, Send, Search, X } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../stores/settingsStore';
-import { fetchProjects, createBatchRepoIssuesAndAddToProject } from '../services/githubService';
+import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields } from '../services/githubService';
 import IssueTable from './IssueTable';
 import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select as ShadSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { GitHubProjectField } from '../types';
 
 export interface IssueRow {
   id: string;
@@ -84,6 +85,14 @@ const IssueCreator: React.FC = () => {
     {
       enabled: !!settings.organization && !!settings.token,
       keepPreviousData: true,
+    }
+  );
+
+  const { data: fields = [] } = useQuery<GitHubProjectField[]>(
+    ['projectFields', settings.projectId],
+    () => fetchProjectFields(settings, settings.projectId),
+    {
+      enabled: !!settings.projectId && !!settings.token && !!settings.organization,
     }
   );
 
@@ -189,7 +198,7 @@ const IssueCreator: React.FC = () => {
       <Card>
         <CardContent className='p-6'>
           <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
-            <h2 className='text-xl font-bold'>Bulk Issue Creator</h2>
+            <h2 className='sr-only'>Bulk Issue Creator</h2>
 
             <div className='flex flex-wrap gap-2'>
               <div className='relative'>
@@ -205,7 +214,7 @@ const IssueCreator: React.FC = () => {
                 />
               </div>
 
-              <ShadSelect value={settings.projectId} onValueChange={(val) => updateSettings({ ...settings, projectId: val })}>
+              <Select value={settings.projectId} onValueChange={(val) => updateSettings({ ...settings, projectId: val })}>
                 <SelectTrigger className='min-w-[200px]'>
                   <SelectValue placeholder='Select project' />
                 </SelectTrigger>
@@ -216,10 +225,10 @@ const IssueCreator: React.FC = () => {
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </ShadSelect>
+              </Select>
 
               {selectedProject && (
-                <ShadSelect value={selectedRepo} onValueChange={setSelectedRepo}>
+                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
                   <SelectTrigger className='min-w-[200px]'>
                     <SelectValue placeholder='Select repository for templates' />
                   </SelectTrigger>
@@ -230,7 +239,7 @@ const IssueCreator: React.FC = () => {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </ShadSelect>
+                </Select>
               )}
             </div>
           </div>
@@ -241,7 +250,7 @@ const IssueCreator: React.FC = () => {
             </Button>
 
             <Button onClick={exportToJson} variant='secondary' className='flex items-center gap-1' disabled={issues.length === 0}>
-              <Download className='w-4 h-4' /> Export JSON
+              <Download className='w-4 h-4' /> Export
             </Button>
 
             <label className='btn btn-secondary flex items-center gap-1 cursor-pointer'>
@@ -260,7 +269,7 @@ const IssueCreator: React.FC = () => {
           </div>
 
           {issues.length > 0 ? (
-            <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} />
+            <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} />
           ) : (
             <div className='text-center py-12 border-2 border-dashed border-border rounded-lg'>
               <p className='text-muted-foreground'>No issues added yet. Add your first issue to get started.</p>
