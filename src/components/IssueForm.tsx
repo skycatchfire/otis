@@ -8,6 +8,12 @@ import { fetchProjectFields, fetchIssueTemplates } from '../services/githubServi
 import { IssueRow as BaseIssueRow } from './IssueCreator';
 import { GitHubIssueTemplate, GitHubProjectField } from '../types';
 import yaml from 'js-yaml';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 
 interface IssueFormProps {
   initialData?: Partial<BaseIssueRow>;
@@ -25,11 +31,6 @@ interface ParsedTemplate extends GitHubIssueTemplate {
 }
 
 // Helper type guard for parsed template
-function hasBody(obj: unknown): obj is { body: Array<{ attributes?: { value?: string } }> } {
-  return (
-    typeof obj === 'object' && obj !== null && 'body' in (obj as Record<string, unknown>) && Array.isArray((obj as Record<string, unknown>).body)
-  );
-}
 function hasName(obj: unknown): obj is { name: string } {
   return (
     typeof obj === 'object' && obj !== null && 'name' in (obj as Record<string, unknown>) && typeof (obj as Record<string, unknown>).name === 'string'
@@ -90,20 +91,6 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     },
   });
 
-  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const templateName = e.target.value;
-    setSelectedTemplate(templateName);
-    if (templateName) {
-      const template = parsedTemplates.find((t) => t?.name === templateName);
-      if (template && hasBody(template.parsed)) {
-        const body = template.parsed.body;
-        if (body[0]?.attributes?.value) {
-          setValue('description', body[0].attributes.value);
-        }
-      }
-    }
-  };
-
   const onFormSubmit = (data: BaseIssueRow) => {
     // Collect project field values into a 'fields' object
     const fieldsObj: Record<string, unknown> = {};
@@ -125,66 +112,69 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
   };
 
   const renderField = (field: GitHubProjectField) => {
-    // Use field.id as the key for registration to avoid TS error
     const fieldProps = register(field.id as keyof BaseIssueRow);
-
     switch (field.type) {
       case 'SINGLE_SELECT':
         return (
-          <select id={field.id} className='input' {...fieldProps}>
-            <option value=''>Select {field.name}</option>
-            {field.options.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
-          </select>
+          <Select {...fieldProps} onValueChange={(val) => setValue(field.id as keyof BaseIssueRow, val)}>
+            <SelectTrigger>
+              <SelectValue placeholder={`Select ${field.name}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
-
       case 'NUMBER':
-        return <input type='number' id={field.id} className='input' {...fieldProps} />;
-
+        return <Input type='number' id={field.id} {...fieldProps} />;
       case 'TEXT':
-        return <input type='text' id={field.id} className='input' {...fieldProps} />;
-
+        return <Input type='text' id={field.id} {...fieldProps} />;
       default:
         return null;
     }
   };
 
   return (
-    <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-      <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden animate-fade-in'>
-        <div className='flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700'>
-          <h3 className='text-lg font-medium'>{initialData ? 'Edit Issue' : 'Add New Issue'}</h3>
-          <button onClick={onCancel} className='text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'>
-            <X className='w-5 h-5' />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit(onFormSubmit)} className='px-6 py-4'>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{initialData ? 'Edit Issue' : 'Add New Issue'}</DialogTitle>
+          <DialogDescription>
+            {initialData ? 'Edit the details of this issue.' : 'Fill out the form to add a new issue to your batch.'}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
           <div className='space-y-4'>
             {selectedRepo && (
               <div>
-                <label htmlFor='template' className='label'>
-                  Issue Template
-                </label>
-                <select id='template' className='input' value={selectedTemplate} onChange={handleTemplateChange}>
-                  <option value=''>Select a template</option>
-                  {parsedTemplates.map((template: ParsedTemplate) => (
-                    <option key={template.name} value={template.name}>
-                      {hasName(template.parsed) ? template.parsed.name : template.name}
-                    </option>
-                  ))}
-                </select>
+                <Label htmlFor='template'>Issue Template</Label>
+                <Select value={selectedTemplate} onValueChange={(val) => setSelectedTemplate(val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select a template' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {parsedTemplates.map((template: ParsedTemplate) => (
+                      <SelectItem key={template.name} value={template.name}>
+                        {hasName(template.parsed) ? template.parsed.name : template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
             <div>
-              <label htmlFor='title' className='label'>
-                Title
-              </label>
-              <input id='title' className='input' {...register('title', { required: 'Title is required' })} />
+              <Label htmlFor='title'>Title</Label>
+              <Input id='title' {...register('title', { required: 'Title is required' })} />
               {errors.title && (
                 <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
                   <AlertCircle className='w-4 h-4' />
@@ -194,10 +184,8 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
             </div>
 
             <div>
-              <label htmlFor='description' className='label'>
-                Description
-              </label>
-              <textarea id='description' rows={5} className='input' {...register('description', { required: 'Description is required' })} />
+              <Label htmlFor='description'>Description</Label>
+              <Textarea id='description' rows={5} {...register('description', { required: 'Description is required' })} />
               {errors.description && (
                 <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
                   <AlertCircle className='w-4 h-4' />
@@ -212,27 +200,24 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
                 if (!rendered) return null;
                 return (
                   <div key={field.id}>
-                    <label htmlFor={field.id} className='label'>
-                      {field.name}
-                    </label>
+                    <Label htmlFor={field.id}>{field.name}</Label>
                     {rendered}
                   </div>
                 );
               })}
             </div>
           </div>
-
           <div className='flex justify-end gap-2 mt-6'>
-            <button type='button' onClick={onCancel} className='btn btn-secondary'>
+            <Button type='button' onClick={onCancel} variant='secondary'>
               Cancel
-            </button>
-            <button type='submit' className='btn btn-primary'>
-              {initialData ? 'Update Issue' : 'Add Issue'}
-            </button>
+            </Button>
+            <Button type='submit' variant='default'>
+              {initialData ? 'Save' : 'Add Issue'}
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

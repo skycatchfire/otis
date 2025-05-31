@@ -9,6 +9,7 @@ Otis is a web application for bulk-creating GitHub issues and adding them to Git
 ## High-Level Architecture
 
 - **Frontend:** Built with React (TypeScript), Vite, and Tailwind CSS.
+- **Component Library:** [shadcn/ui](https://ui.shadcn.com/) for consistent, modern UI components (UI is being migrated to shadcn for a unified look and feel).
 - **State Management:** Zustand for global state (settings, configuration).
 - **API Integration:** Axios for REST and GraphQL calls to GitHub.
 - **UI Components:** Modular React components for forms, tables, and modals.

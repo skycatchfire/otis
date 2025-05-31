@@ -1,9 +1,13 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { X, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { testGitHubConnection } from '../services/githubService';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface SettingsFormData {
   organization: string;
@@ -46,7 +50,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           },
           true
         ); // Pass true to indicate valid connection
-        toast.success('Settings saved successfully');
+        toast('Settings saved successfully');
         onClose();
       } else {
         updateSettings(
@@ -62,7 +66,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           message: 'Unable to connect to GitHub with these credentials',
         });
       }
-    } catch (error) {
+    } catch {
       updateSettings(
         {
           organization: data.organization,
@@ -71,32 +75,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         },
         false
       ); // Pass false on error
-      toast.error('Failed to save settings');
+      toast('Failed to save settings');
     }
   };
 
   return (
-    <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-      <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden animate-fade-in'>
-        <div className='flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700'>
-          <h3 className='text-lg font-medium'>GitHub Settings</h3>
-          <button onClick={onClose} className='text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'>
-            <X className='w-5 h-5' />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className='px-6 py-4'>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className='max-w-md'>
+        <DialogHeader>
+          <DialogTitle>GitHub Settings</DialogTitle>
+          <DialogDescription>Enter your GitHub organization and personal access token to connect Otis to your GitHub account.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className='space-y-4'>
             <div>
-              <label htmlFor='organization' className='label'>
-                GitHub Organization
-              </label>
-              <input
-                id='organization'
-                placeholder='e.g., my-organization'
-                className='input'
-                {...register('organization', { required: 'Organization is required' })}
-              />
+              <Label htmlFor='organization'>GitHub Organization</Label>
+              <Input id='organization' placeholder='e.g., my-organization' {...register('organization', { required: 'Organization is required' })} />
               {errors.organization && (
                 <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
                   <AlertCircle className='w-4 h-4' />
@@ -105,16 +104,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               )}
               <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>Enter the organization name as it appears in the GitHub URL</p>
             </div>
-
             <div>
-              <label htmlFor='token' className='label'>
-                GitHub Personal Access Token (PAT)
-              </label>
-              <input
+              <Label htmlFor='token'>GitHub Personal Access Token (PAT)</Label>
+              <Input
                 id='token'
                 type='password'
                 placeholder='••••••••••••••••••••••••'
-                className='input'
                 {...register('token', { required: 'Personal access token is required' })}
               />
               {errors.token && (
@@ -133,18 +128,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
           </div>
-
           <div className='flex justify-end gap-2 mt-6'>
-            <button type='button' onClick={onClose} className='btn btn-secondary' disabled={isSubmitting}>
+            <Button type='button' onClick={onClose} variant='secondary' disabled={isSubmitting}>
               Cancel
-            </button>
-            <button type='submit' className='btn btn-primary' disabled={isSubmitting}>
+            </Button>
+            <Button type='submit' variant='default' disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save Settings'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

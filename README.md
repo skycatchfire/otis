@@ -10,6 +10,7 @@ Otis is a web application that allows users to connect to a GitHub organization 
 
 - **Frontend Framework:** React 18 (with TypeScript)
 - **Build Tool:** Vite
+- **Component Library:** [shadcn/ui](https://ui.shadcn.com/) (for consistent, modern UI components)
 - **Styling:** Tailwind CSS
 - **State Management:** Zustand
 - **API/HTTP:** Axios
@@ -27,7 +28,7 @@ Otis is a web application that allows users to connect to a GitHub organization 
 - Use GitHub issue templates (Markdown/YAML)
 - Map custom project fields to issues
 - Bulk create issues and add them to GitHub Projects
-- Responsive, modern UI with dark mode support
+- Responsive, modern UI with dark mode support (powered by shadcn/ui)
 
 ## Setup & Installation
 

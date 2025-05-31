@@ -4,21 +4,25 @@ import Header from './components/Header';
 import SettingsModal from './components/SettingsModal';
 import IssueCreator from './components/IssueCreator';
 import { useSettingsStore } from './stores/settingsStore';
+import { Button } from '@/components/ui/button';
+import { Toaster } from '@/components/ui/sonner';
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { isConfigured } = useSettingsStore();
 
   return (
-    <div className='min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100'>
+    <div className='min-h-screen bg-background text-foreground'>
       <Header>
-        <button
+        <Button
+          variant='ghost'
           onClick={() => setIsSettingsOpen(true)}
-          className='ml-auto flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors'
+          className='ml-auto flex items-center justify-center rounded-full'
           aria-label='Settings'
+          size='icon'
         >
           <SettingsIcon className='w-5 h-5' />
-        </button>
+        </Button>
       </Header>
 
       <main className='container mx-auto px-4 py-8'>
@@ -30,17 +34,15 @@ function App() {
             <p className='text-gray-600 dark:text-gray-400 mb-6 max-w-lg'>
               Connect to your GitHub project to start creating issues in bulk. Click the settings icon to configure your GitHub connection.
             </p>
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className='px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors'
-            >
+            <Button onClick={() => setIsSettingsOpen(true)} variant='default'>
               Configure Settings
-            </button>
+            </Button>
           </div>
         )}
       </main>
 
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      <Toaster />
     </div>
   );
 }
