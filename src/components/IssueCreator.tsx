@@ -17,6 +17,7 @@ export interface IssueRow {
   labels?: string[];
   estimate?: string;
   fields?: Record<string, unknown>;
+  images?: File[];
 }
 
 interface ConfirmDialogProps {
@@ -148,6 +149,7 @@ const IssueCreator: React.FC = () => {
         title: issue.title,
         body: issue.description,
         fields: issue.fields,
+        images: issue.images,
       }));
 
       await createBatchRepoIssuesAndAddToProject(settings, selectedRepo, formattedIssues, (completed, total) => {

@@ -141,6 +141,12 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
           </select>
         );
 
+      case 'NUMBER':
+        return <input type='number' id={field.id} className='input' {...fieldProps} />;
+
+      case 'TEXT':
+        return <input type='text' id={field.id} className='input' {...fieldProps} />;
+
       default:
         return null;
     }

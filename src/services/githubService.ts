@@ -448,7 +448,7 @@ export const createBatchRepoIssuesAndAddToProject = async (
       if (!itemId) {
         throw new Error('Failed to add issue to project: No item ID returned');
       }
-      // 3. Update fields if provided
+      // 4. Update fields if provided
       if (issue.fields) {
         for (const [fieldId, value] of Object.entries(issue.fields)) {
           if (fieldId && value !== undefined) {
