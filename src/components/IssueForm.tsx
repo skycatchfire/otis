@@ -206,12 +206,6 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
               )}
             </div>
 
-            <div>
-              <label className='label'>Attach Images</label>
-              <div className='flex items-center gap-2'>{/* Remove file input for images */}</div>
-              {/* Remove image previews */}
-            </div>
-
             <div className='grid grid-cols-1 gap-4'>
               {fields.map((field: GitHubProjectField) => {
                 const rendered = renderField(field);
