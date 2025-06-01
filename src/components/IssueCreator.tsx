@@ -196,7 +196,7 @@ const IssueCreator: React.FC = () => {
           <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
             <h2 className='sr-only'>Bulk Issue Creator</h2>
 
-            <div className='flex flex-wrap gap-2 min-w-[250px]'>
+            <div className='flex gap-2 min-w-[18.75rem]'>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant='outline' role='combobox' aria-expanded={false} className='w-[250px] justify-between'>
