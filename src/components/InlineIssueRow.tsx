@@ -63,7 +63,7 @@ function renderCell({
   if (field.type === 'SINGLE_SELECT') {
     return (
       <Select value={value} defaultValue={value} onValueChange={(val) => onChange && onChange(val)}>
-        <SelectTrigger autoFocus={autoFocus} className={`h-full rounded-none border-none hover:bg-muted focus:bg-muted text-foreground ${className}`}>
+        <SelectTrigger autoFocus={autoFocus} className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground ${className}`}>
           <SelectValue placeholder={placeholder || `Select ${field.name}`} />
         </SelectTrigger>
         <SelectContent>
@@ -78,7 +78,7 @@ function renderCell({
   } else {
     return (
       <Input
-        className={`h-full rounded-none border-none hover:bg-muted focus:bg-muted text-foreground ${className}`}
+        className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground ${className}`}
         autoFocus={autoFocus}
         type={field.type === 'NUMBER' ? 'number' : 'text'}
         value={value}
@@ -113,10 +113,10 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
   if (isAddRow && addRow) {
     return (
       <TableRow ref={ref}>
-        <TableCell className='p-0 h-[3.375rem] border-r' tabIndex={-1}>
+        <TableCell className='p-0 h-[3.375rem] border-r border-border' tabIndex={-1}>
           {/* Template select */}
           <Select value={addRow.template} onValueChange={(val) => onAddRowChange && onAddRowChange('template', val)}>
-            <SelectTrigger className='h-full rounded-none border-none hover:bg-muted focus:bg-muted text-foreground border-none outline-none shadow-none'>
+            <SelectTrigger className='h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground border-none outline-none shadow-none'>
               <SelectValue placeholder='Select template' />
             </SelectTrigger>
             <SelectContent>
@@ -128,7 +128,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
             </SelectContent>
           </Select>
         </TableCell>
-        <TableCell className='p-0 h-[3.375rem] border-r'>
+        <TableCell className='p-0 h-[3.375rem] border-r border-border'>
           {renderCell({
             field: { id: 'title', name: 'Title', type: 'text' },
             value: addRow.title,
@@ -139,7 +139,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
             className: 'border-none outline-none shadow-none',
           })}
         </TableCell>
-        <TableCell className='p-0 h-[3.375rem] border-r'>
+        <TableCell className='p-0 h-[3.375rem] border-r border-border'>
           {renderCell({
             field: { id: 'description', name: 'Description', type: 'text' },
             value: addRow.description,
@@ -152,7 +152,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
         </TableCell>
         {/* Dynamic fields */}
         {renderedFields.map((field) => (
-          <TableCell key={field.id} className='h-[3.375rem] p-0 text-muted-foreground border-r' tabIndex={-1}>
+          <TableCell key={field.id} className='h-[3.375rem] p-0 text-muted-foreground border-r border-border' tabIndex={-1}>
             {renderCell({
               field,
               value: addRow.fields[field.id] || '',
@@ -166,7 +166,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
         ))}
         {/* Add button cell */}
         <TableCell className='text-right p-0 h-[3.375rem]'>
-          <div className='flex justify-end gapx-3 py-1'>
+          <div className='flex justify-end px-3 py-1'>
             <Button onClick={onAddRowSubmit} variant='default' size='sm' disabled={!addRow.title}>
               Add
             </Button>
@@ -180,10 +180,10 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
   if (!issue) return null;
   return (
     <TableRow>
-      <TableCell className='p-0 h-[3.375rem] border-r' tabIndex={-1}>
+      <TableCell className='p-0 h-[3.375rem] border-r border-border' tabIndex={-1}>
         {/* Template dropdown for edit/view row */}
         <Select value={issue.template || ''} onValueChange={(val) => onInlineEditChange && onInlineEditChange(issue.id, 'template', val)}>
-          <SelectTrigger className='h-full rounded-none hover:bg-muted focus:bg-muted text-foreground border-none outline-none shadow-none'>
+          <SelectTrigger className='h-full rounded-none hover:bg-accent focus:bg-accent text-foreground border-none outline-none shadow-none'>
             <SelectValue placeholder='Select template' />
           </SelectTrigger>
           <SelectContent>
@@ -196,7 +196,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
         </Select>
       </TableCell>
       <TableCell
-        className='font-medium p-0 h-[3.375rem] border-r'
+        className='font-medium p-0 h-[3.375rem] border-r border-border'
         onFocus={() => onCellClick && onCellClick(issue.id, 'title')}
         onClick={() => onCellClick && onCellClick(issue.id, 'title')}
         tabIndex={inlineEdit && inlineEdit.id === issue.id && inlineEdit.field === 'title' ? -1 : 0}
@@ -212,7 +212,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
         })}
       </TableCell>
 
-      <TableCell className='p-0 h-[3.375rem] border-r'>
+      <TableCell className='p-0 h-[3.375rem] border-r border-border'>
         {renderCell({
           field: { id: 'description', name: 'Description', type: 'text' },
           value: issue.description,
@@ -228,7 +228,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
         return (
           <TableCell
             key={field.id}
-            className='h-[3.375rem] p-0 text-muted-foreground border-r'
+            className='h-[3.375rem] p-0 text-muted-foreground border-r border-border'
             onClick={() => onCellClick && onCellClick(issue.id, field.id)}
             onFocus={() => onCellClick && onCellClick(issue.id, field.id)}
             tabIndex={inlineEdit && inlineEdit.id === issue.id && inlineEdit.field === field.id ? -1 : 0}

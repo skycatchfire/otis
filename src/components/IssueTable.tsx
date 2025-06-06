@@ -175,16 +175,16 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
 
   return (
     <>
-      <div className='overflow-x-auto border rounded-md'>
+      <div className='overflow-x-auto border border-border rounded-md'>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className='p-3 border-r'>Template</TableHead>
-              <TableHead className='p-3 border-r'>Title</TableHead>
-              <TableHead className='p-3 border-r'>Description</TableHead>
+              <TableHead className='p-3 border-r border-border'>Template</TableHead>
+              <TableHead className='p-3 border-r border-border'>Title</TableHead>
+              <TableHead className='p-3 border-r border-border'>Description</TableHead>
               {/* Dynamic project fields */}
               {renderedFields.map((field) => (
-                <TableHead key={field.id} className='p-3 border-r'>
+                <TableHead key={field.id} className='p-3 border-r border-border'>
                   {field.name}
                 </TableHead>
               ))}

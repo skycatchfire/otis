@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { IssueRow } from '../components/IssueCreator';
 
 interface Settings {
   organization: string;
@@ -14,10 +15,12 @@ interface SettingsState {
   isConfigured: boolean;
   lastUsedTemplate?: string;
   lastUsedFields?: Record<string, string>;
+  draftIssues: IssueRow[];
   updateSettings: (settings: Partial<Settings>, validConnection?: boolean) => void;
   clearSettings: () => void;
   setLastUsedTemplate: (template: string) => void;
   setLastUsedFields: (fields: Record<string, string>) => void;
+  setDraftIssues: (issues: IssueRow[]) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -33,6 +36,7 @@ export const useSettingsStore = create<SettingsState>()(
       isConfigured: false,
       lastUsedTemplate: '',
       lastUsedFields: {},
+      draftIssues: [],
       updateSettings: (newSettings, validConnection) =>
         set((state) => ({
           settings: {
@@ -58,9 +62,11 @@ export const useSettingsStore = create<SettingsState>()(
           isConfigured: false,
           lastUsedTemplate: '',
           lastUsedFields: {},
+          draftIssues: [],
         }),
       setLastUsedTemplate: (template) => set({ lastUsedTemplate: template }),
       setLastUsedFields: (fields) => set({ lastUsedFields: fields }),
+      setDraftIssues: (issues) => set({ draftIssues: issues }),
     }),
     {
       name: 'github-issue-creator-settings',
@@ -75,6 +81,7 @@ export const useSettingsStore = create<SettingsState>()(
         isConfigured: state.isConfigured,
         lastUsedTemplate: state.lastUsedTemplate,
         lastUsedFields: state.lastUsedFields,
+        draftIssues: state.draftIssues,
       }),
     }
   )

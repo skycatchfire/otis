@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { SettingsIcon } from 'lucide-react';
-import Header from './components/Header';
-import SettingsModal from './components/SettingsModal';
-import IssueCreator from './components/IssueCreator';
-import { useSettingsStore } from './stores/settingsStore';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
+import { SettingsIcon } from 'lucide-react';
+import { useState } from 'react';
+import Header from './components/Header';
+import IssueCreator from './components/IssueCreator';
+import SettingsModal from './components/SettingsModal';
+import { useSettingsStore } from './stores/settingsStore';
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { isConfigured } = useSettingsStore();
 
   return (
-    <div className='min-h-screen bg-background text-foreground'>
+    <div className='min-h-screen bg-background text-foreground dark'>
       <Header>
         <Button
           variant='ghost'

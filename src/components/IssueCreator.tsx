@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Download, Upload, Send, X, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Download, Upload, Send, ChevronsUpDown, Check } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -7,7 +7,7 @@ import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields
 import IssueTable from './IssueTable';
 import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -80,9 +80,9 @@ interface ParsedTemplate {
 }
 
 const IssueCreator: React.FC = () => {
-  const { settings, updateSettings } = useSettingsStore();
+  const { settings, updateSettings, draftIssues, setDraftIssues } = useSettingsStore();
   const [selectedRepo, setSelectedRepo] = useState<string>(settings.selectedRepo || '');
-  const [issues, setIssues] = useState<IssueRow[]>([]);
+  const [issues, setIssues] = useState<IssueRow[]>(draftIssues || []);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,6 +139,17 @@ const IssueCreator: React.FC = () => {
       updateSettings({ selectedRepo });
     }
   }, [selectedRepo]);
+
+  // Keep issues in sync with draftIssues in the store
+  useEffect(() => {
+    setIssues(draftIssues || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    setDraftIssues(issues);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issues]);
 
   const addNewIssue = (issue: IssueRow) => {
     setIssues((prev) => [...prev, issue]);
@@ -234,6 +245,7 @@ const IssueCreator: React.FC = () => {
       });
 
       setIssues([]);
+      setDraftIssues([]); // Clear drafts after submit
       toast('All issues created successfully');
     } catch {
       toast('Failed to create some issues. Please check the console for details.');
@@ -246,7 +258,7 @@ const IssueCreator: React.FC = () => {
   return (
     <div>
       <Card className='border-none shadow-none'>
-        <CardContent className='p-0'>
+        <CardContent className='p-6'>
           <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
             <h2 className='sr-only'>Bulk Issue Creator</h2>
 
@@ -332,7 +344,7 @@ const IssueCreator: React.FC = () => {
         </CardContent>
       </Card>
 
-      {isFormOpen && <IssueForm onSubmit={addNewIssue} onCancel={() => setIsFormOpen(false)} selectedRepo={selectedRepo} />}
+      {isFormOpen && <IssueForm onSubmit={addNewIssue} onCancel={() => setIsFormOpen(false)} />}
 
       <ConfirmDialog
         isOpen={isConfirmOpen}
