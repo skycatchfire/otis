@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useQuery } from 'react-query';
@@ -19,7 +19,6 @@ interface IssueFormProps {
   initialData?: Partial<BaseIssueRow>;
   onSubmit: (issue: BaseIssueRow) => void;
   onCancel: () => void;
-  selectedRepo?: string;
 }
 
 // Define a type for parsed templates
@@ -42,19 +41,19 @@ interface IssueRowWithFields extends BaseIssueRow {
   fields?: Record<string, unknown>;
 }
 
-const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, selectedRepo }) => {
+const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const { settings, isConfigured, lastUsedTemplate, lastUsedFields, setLastUsedTemplate, setLastUsedFields } = useSettingsStore();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(lastUsedTemplate || '');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(initialData?.template || lastUsedTemplate || '');
 
   const { data: fields = [] } = useQuery(['projectFields', settings.projectId], () => fetchProjectFields(settings, settings.projectId), {
     enabled: isConfigured && !!settings.projectId,
   });
 
   const { data: templates = [] } = useQuery(
-    ['issueTemplates', settings.organization, selectedRepo],
-    () => (selectedRepo ? fetchIssueTemplates(settings, selectedRepo) : Promise.resolve([])),
+    ['issueTemplates', settings.organization, settings.selectedRepo],
+    () => (settings.selectedRepo ? fetchIssueTemplates(settings, settings.selectedRepo) : Promise.resolve([])),
     {
-      enabled: !!selectedRepo,
+      enabled: !!settings.selectedRepo,
     }
   );
 
@@ -77,10 +76,18 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       });
   }, [templates]);
 
+  // Prepare default values for useForm
+  const dynamicFieldDefaults = initialData?.fields
+    ? Object.fromEntries(Object.entries(initialData.fields).map(([k, v]) => [k, v]))
+    : lastUsedFields && !initialData
+    ? Object.fromEntries(Object.entries(lastUsedFields).map(([k, v]) => [k, v]))
+    : {};
+
   const {
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors },
   } = useForm<BaseIssueRow>({
     defaultValues: {
@@ -91,8 +98,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       type: initialData?.type || '',
       assignee: initialData?.assignee || '',
       estimate: initialData?.estimate || '',
-      // Prefill dynamic fields from lastUsedFields if not editing
-      ...(lastUsedFields && !initialData ? Object.fromEntries(Object.entries(lastUsedFields).map(([k, v]) => [k, v])) : {}),
+      ...dynamicFieldDefaults,
     },
   });
 
@@ -137,27 +143,35 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
   };
 
   const renderField = (field: GitHubProjectField) => {
-    const fieldProps = register(field.id as keyof BaseIssueRow);
     switch (field.type) {
       case 'SINGLE_SELECT':
         return (
-          <Select {...fieldProps} onValueChange={(val) => setValue(field.id as keyof BaseIssueRow, val)}>
-            <SelectTrigger>
-              <SelectValue placeholder={`Select ${field.name}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {field.options.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            name={field.id as keyof BaseIssueRow}
+            control={control}
+            render={({ field: controllerField }) => (
+              <Select
+                value={typeof controllerField.value === 'string' ? controllerField.value : ''}
+                onValueChange={(val) => controllerField.onChange(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={`Select ${field.name}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {field.options.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         );
       case 'NUMBER':
-        return <Input type='number' id={field.id} {...fieldProps} />;
+        return <Input type='number' id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
       case 'TEXT':
-        return <Input type='text' id={field.id} {...fieldProps} />;
+        return <Input type='text' id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
       default:
         return null;
     }
@@ -179,7 +193,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <div className='space-y-4'>
-            {selectedRepo && (
+            {settings.selectedRepo && (
               <div>
                 <Label htmlFor='template'>Issue Template</Label>
                 <Select value={selectedTemplate} onValueChange={(val) => setSelectedTemplate(val)}>
