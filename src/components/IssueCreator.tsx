@@ -34,10 +34,10 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   issueCount: number;
-  projectId: string;
+  projectName: string;
 }
 
-const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCancel, issueCount, projectId }) => {
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCancel, issueCount, projectName }) => {
   return (
     <Dialog
       open={isOpen}
@@ -47,19 +47,15 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Issue Creation</DialogTitle>
-          <DialogDescription>
-            This will create {issueCount} issues in project #{projectId}. This action cannot be undone.
-          </DialogDescription>
-          <DialogClose asChild>
-            <Button onClick={onCancel} variant='ghost' size='icon' aria-label='Close'>
-              <X className='w-5 h-5' />
-            </Button>
-          </DialogClose>
+          <DialogTitle>Confirm Bulk Issue Creation</DialogTitle>
+          <DialogDescription></DialogDescription>
         </DialogHeader>
-        <p className='text-muted-foreground mb-6'>
-          Are you sure you want to create {issueCount} issues in project #{projectId}? This action cannot be undone.
+
+        <p>
+          You&apos;re about to create <strong className='font-semibold'>{issueCount}</strong> issues in{' '}
+          <strong className='font-semibold'>{projectName}</strong>. Are you sure you want to proceed?
         </p>
+
         <div className='flex justify-end gap-3'>
           <Button onClick={onCancel} variant='secondary'>
             Cancel
@@ -343,7 +339,7 @@ const IssueCreator: React.FC = () => {
         onConfirm={handleSubmitIssues}
         onCancel={() => setIsConfirmOpen(false)}
         issueCount={issues.length}
-        projectId={settings.projectId}
+        projectName={selectedProject ? `${selectedProject.name} (#${selectedProject.number})` : ''}
       />
     </div>
   );
