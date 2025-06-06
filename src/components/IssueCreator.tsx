@@ -106,7 +106,15 @@ const IssueCreator: React.FC = () => {
   };
 
   const updateIssue = (id: string, updates: Partial<IssueRow>) => {
-    setIssues((prev) => prev.map((issue) => (issue.id === id ? { ...issue, ...updates } : issue)));
+    setIssues((prev) => {
+      const idx = prev.findIndex((issue) => issue.id === id);
+      if (idx === -1) {
+        // Add new issue
+        return [...prev, { ...updates, id } as IssueRow];
+      }
+      // Update existing issue
+      return prev.map((issue) => (issue.id === id ? { ...issue, ...updates } : issue));
+    });
   };
 
   const exportToJson = () => {
@@ -191,8 +199,8 @@ const IssueCreator: React.FC = () => {
 
   return (
     <div>
-      <Card>
-        <CardContent className='p-6'>
+      <Card className='border-none shadow-none'>
+        <CardContent className='p-0'>
           <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
             <h2 className='sr-only'>Bulk Issue Creator</h2>
 
@@ -274,13 +282,7 @@ const IssueCreator: React.FC = () => {
             </Button>
           </div>
 
-          {issues.length > 0 ? (
-            <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} />
-          ) : (
-            <div className='text-center py-12 border-2 border-dashed border-border rounded-lg'>
-              <p className='text-muted-foreground'>No issues added yet. Add your first issue to get started.</p>
-            </div>
-          )}
+          <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} />
         </CardContent>
       </Card>
 

@@ -5,6 +5,10 @@ import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { GitHubProjectField } from '../types';
+import { Input } from '@/components/ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { v4 as uuidv4 } from 'uuid';
+import InlineIssueRow from './InlineIssueRow';
 
 interface IssueTableProps {
   issues: IssueRow[];
@@ -17,6 +21,9 @@ const RENDERED_FIELD_TYPES = ['SINGLE_SELECT', 'NUMBER', 'TEXT'];
 
 const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fields = [] }) => {
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
+  const [inlineEdit, setInlineEdit] = useState<{ id: string; field: string } | null>(null);
+  const [addRow, setAddRow] = useState<{ id: string; title: string; fields: Record<string, string> }>({ id: uuidv4(), title: '', fields: {} });
+  const addRowRef = React.useRef<HTMLTableRowElement>(null);
 
   // Only show fields that are rendered in the form
   const renderedFields = fields.filter((f) => RENDERED_FIELD_TYPES.includes(f.type));
@@ -31,9 +38,61 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
     setEditingIssueId(null);
   };
 
+  const handleAddRowChange = (field: string, value: string) => {
+    if (field === 'title') {
+      setAddRow((prev) => ({ ...prev, title: value }));
+    } else {
+      setAddRow((prev) => ({ ...prev, fields: { ...prev.fields, [field]: value } }));
+    }
+  };
+
+  const handleAddRowSubmit = () => {
+    if (!addRow.title) return;
+    const newIssue: IssueRow = {
+      id: addRow.id,
+      title: addRow.title,
+      description: '',
+      fields: addRow.fields,
+    };
+    onUpdate(newIssue.id, newIssue); // Use onUpdate to add (parent should handle add if not exists)
+    setAddRow({ id: uuidv4(), title: '', fields: {} });
+    // Focus first input in new add row
+    setTimeout(() => {
+      if (addRowRef.current) {
+        const firstInput = addRowRef.current.querySelector('input,select,textarea');
+        if (firstInput) (firstInput as HTMLElement).focus();
+      }
+    }, 0);
+  };
+
+  // Inline edit handlers
+  const handleCellClick = (id: string, field: string) => {
+    setInlineEdit({ id, field });
+  };
+  const handleInlineEditChange = (id: string, field: string, value: string) => {
+    const issue = issues.find((i) => i.id === id);
+    if (!issue) return;
+    if (field === 'title') {
+      onUpdate(id, { ...issue, title: value });
+    } else {
+      onUpdate(id, { ...issue, fields: { ...issue.fields, [field]: value } });
+    }
+  };
+  const handleInlineEditBlur = () => {
+    setInlineEdit(null);
+  };
+
+  // Keyboard navigation for add row
+  const handleAddRowKeyDown = (e: React.KeyboardEvent, field: string) => {
+    if (e.key === 'Enter' || (e.key === 'Tab' && field === renderedFields[renderedFields.length - 1]?.id)) {
+      e.preventDefault();
+      handleAddRowSubmit();
+    }
+  };
+
   return (
     <>
-      <div className='overflow-x-auto'>
+      <div className='overflow-x-auto border rounded-md'>
         <Table>
           <TableHeader>
             <TableRow>
@@ -47,45 +106,29 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
           </TableHeader>
           <TableBody>
             {issues.map((issue) => (
-              <TableRow key={issue.id} className='hover:bg-accent'>
-                <TableCell className='font-medium'>
-                  <div className='flex items-start'>
-                    <span className='truncate max-w-xs'>{issue.title}</span>
-                  </div>
-                </TableCell>
-                {/* Dynamic project field values */}
-                {renderedFields.map((field) => {
-                  let value = issue.fields?.[field.id];
-                  if (field.type === 'SINGLE_SELECT' && value && field.options) {
-                    const opt = field.options.find((o) => o.id === value);
-                    value = opt ? opt.name : value;
-                  }
-                  let displayValue: string = '-';
-                  if (value !== undefined && value !== '') {
-                    if (typeof value === 'object') {
-                      displayValue = JSON.stringify(value);
-                    } else {
-                      displayValue = String(value);
-                    }
-                  }
-                  return (
-                    <TableCell key={field.id} className='text-muted-foreground'>
-                      {displayValue}
-                    </TableCell>
-                  );
-                })}
-                <TableCell className='text-right'>
-                  <div className='flex justify-end gap-2'>
-                    <Button onClick={() => setEditingIssueId(issue.id)} variant='ghost' size='icon' aria-label='Edit'>
-                      <Edit2 className='w-4 h-4' />
-                    </Button>
-                    <Button onClick={() => onDelete(issue.id)} variant='destructive' size='icon' aria-label='Delete'>
-                      <Trash2 className='w-4 h-4' />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
+              <InlineIssueRow
+                key={issue.id}
+                issue={issue}
+                renderedFields={renderedFields}
+                isEditing={inlineEdit && inlineEdit.id === issue.id}
+                inlineEdit={inlineEdit}
+                onCellClick={handleCellClick}
+                onInlineEditChange={handleInlineEditChange}
+                onInlineEditBlur={handleInlineEditBlur}
+                onEditClick={() => setEditingIssueId(issue.id)}
+                onDelete={() => onDelete(issue.id)}
+              />
             ))}
+            {/* Always-visible add row */}
+            <InlineIssueRow
+              ref={addRowRef}
+              isAddRow
+              addRow={addRow}
+              renderedFields={renderedFields}
+              onAddRowChange={handleAddRowChange}
+              onAddRowKeyDown={handleAddRowKeyDown}
+              onAddRowSubmit={handleAddRowSubmit}
+            />
           </TableBody>
         </Table>
       </div>

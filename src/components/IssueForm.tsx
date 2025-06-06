@@ -58,20 +58,23 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     }
   );
 
-  // Parse YAML templates into JSON objects
+  // Parse YAML templates into JSON objects, ignoring config.yaml
   const parsedTemplates: ParsedTemplate[] = useMemo(() => {
-    return (templates as GitHubIssueTemplate[]).map((template) => {
-      if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
-        try {
-          const parsed: unknown = yaml.load(template.content);
-          return { ...template, parsed: parsed as { body: Array<{ attributes?: { value?: string } }>; name: string } };
-        } catch (e) {
-          console.error(`Failed to parse YAML for template ${template.name}:`, e);
-          return { ...template, parsed: null };
+    return (templates as GitHubIssueTemplate[])
+      .filter((template) => template.path !== '.github/ISSUE_TEMPLATE/config.yml')
+      .map((template) => {
+        // Ignore config.yaml (case-insensitive)
+        if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
+          try {
+            const parsed: unknown = yaml.load(template.content);
+            return { ...template, parsed: parsed as { body: Array<{ attributes?: { value?: string } }>; name: string } };
+          } catch (e) {
+            console.error(`Failed to parse YAML for template ${template.name}:`, e);
+            return { ...template, parsed: null };
+          }
         }
-      }
-      return { ...template, parsed: null };
-    });
+        return { ...template, parsed: null };
+      });
   }, [templates]);
 
   const {
