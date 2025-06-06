@@ -97,6 +97,7 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
           <TableHeader>
             <TableRow>
               <TableHead className='p-3 border-r'>Title</TableHead>
+              <TableHead className='p-3 border-r'>Description</TableHead>
               {/* Dynamic project fields */}
               {renderedFields.map((field) => (
                 <TableHead key={field.id} className='p-3 border-r'>

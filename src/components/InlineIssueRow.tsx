@@ -11,7 +11,7 @@ import { GitHubProjectField } from '../types';
 interface InlineIssueRowProps {
   // Add row props
   isAddRow?: boolean;
-  addRow?: { id: string; title: string; fields: Record<string, string> };
+  addRow?: { id: string; title: string; description: string; fields: Record<string, string> };
   renderedFields: GitHubProjectField[];
   onAddRowChange?: (field: string, value: string) => void;
   onAddRowKeyDown?: (e: React.KeyboardEvent, field: string) => void;
@@ -51,10 +51,7 @@ function renderCell({
   if (field.type === 'SINGLE_SELECT') {
     return (
       <Select value={value} defaultValue={value} onValueChange={(val) => onChange && onChange(val)}>
-        <SelectTrigger
-          autoFocus={autoFocus}
-          className={`h-full rounded-none border-none hover:bg-accent focus:bg-muted text-foreground ${className}`}
-        >
+        <SelectTrigger autoFocus={autoFocus} className={`h-full rounded-none border-none hover:bg-muted focus:bg-muted text-foreground ${className}`}>
           <SelectValue placeholder={placeholder || `Select ${field.name}`} />
         </SelectTrigger>
         <SelectContent>
@@ -69,7 +66,7 @@ function renderCell({
   } else {
     return (
       <Input
-        className={`h-full rounded-none border-none hover:bg-accent focus:bg-muted text-foreground ${className}`}
+        className={`h-full rounded-none border-none hover:bg-muted focus:bg-muted text-foreground ${className}`}
         autoFocus={autoFocus}
         type={field.type === 'NUMBER' ? 'number' : 'text'}
         value={value}
@@ -112,6 +109,17 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
             onKeyDown: (e) => onAddRowKeyDown && onAddRowKeyDown(e, 'title'),
             autoFocus: false,
             placeholder: 'Title',
+            className: 'border-none outline-none shadow-none',
+          })}
+        </TableCell>
+        <TableCell className='p-0 h-[3.375rem] border-r'>
+          {renderCell({
+            field: { id: 'description', name: 'Description', type: 'text' },
+            value: addRow.description,
+            onChange: (val) => onAddRowChange && onAddRowChange('description', val),
+            onKeyDown: (e) => onAddRowKeyDown && onAddRowKeyDown(e, 'description'),
+            autoFocus: false,
+            placeholder: 'Description',
             className: 'border-none outline-none shadow-none',
           })}
         </TableCell>
@@ -158,6 +166,18 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
           onBlur: onInlineEditBlur,
           onKeyDown: (e) => e.key === 'Enter' && onInlineEditBlur && onInlineEditBlur(),
           autoFocus: !!(inlineEdit && inlineEdit.id === issue.id && inlineEdit.field === 'title'),
+          className: 'border-none outline-none shadow-none',
+        })}
+      </TableCell>
+
+      <TableCell className='p-0 h-[3.375rem] border-r'>
+        {renderCell({
+          field: { id: 'description', name: 'Description', type: 'text' },
+          value: issue.description,
+          onChange: (val) => onInlineEditChange && onInlineEditChange(issue.id, 'description', val),
+          onBlur: onInlineEditBlur,
+          onKeyDown: (e) => e.key === 'Enter' && onInlineEditBlur && onInlineEditBlur(),
+          autoFocus: !!(inlineEdit && inlineEdit.id === issue.id && inlineEdit.field === 'description'),
           className: 'border-none outline-none shadow-none',
         })}
       </TableCell>
