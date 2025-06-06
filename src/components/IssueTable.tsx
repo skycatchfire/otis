@@ -1,28 +1,42 @@
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import React, { useState } from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
+import { GitHubProjectField } from '../types';
+import InlineIssueRow from './InlineIssueRow';
 import { IssueRow } from './IssueCreator';
 import IssueForm from './IssueForm';
-import { Button } from '@/components/ui/button';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { GitHubProjectField } from '../types';
-import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { v4 as uuidv4 } from 'uuid';
-import InlineIssueRow from './InlineIssueRow';
+
+// Define a type for parsed templates (copied from IssueForm)
+interface ParsedTemplate {
+  name: string;
+  path: string;
+  content: string;
+  parsed: {
+    body?: Array<{ attributes?: { value?: string } }>;
+    name?: string;
+  } | null;
+}
 
 interface IssueTableProps {
   issues: IssueRow[];
   onUpdate: (id: string, updates: Partial<IssueRow>) => void;
   onDelete: (id: string) => void;
   fields?: GitHubProjectField[];
+  templates?: ParsedTemplate[];
 }
 
 const RENDERED_FIELD_TYPES = ['SINGLE_SELECT', 'NUMBER', 'TEXT'];
 
-const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fields = [] }) => {
+const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fields = [], templates = [] }) => {
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
   const [inlineEdit, setInlineEdit] = useState<{ id: string; field: string } | null>(null);
-  const [addRow, setAddRow] = useState<{ id: string; title: string; fields: Record<string, string> }>({ id: uuidv4(), title: '', fields: {} });
+  const [addRow, setAddRow] = useState<{ id: string; template: string; title: string; description: string; fields: Record<string, string> }>({
+    id: uuidv4(),
+    template: '',
+    title: '',
+    description: '',
+    fields: {},
+  });
   const addRowRef = React.useRef<HTMLTableRowElement>(null);
 
   // Only show fields that are rendered in the form
@@ -41,6 +55,23 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
   const handleAddRowChange = (field: string, value: string) => {
     if (field === 'title') {
       setAddRow((prev) => ({ ...prev, title: value }));
+    } else if (field === 'template') {
+      // Find the selected template and auto-populate description
+      const selectedTemplate = templates.find((t) => t.name === value);
+      let description = '';
+      if (selectedTemplate) {
+        // Try to get description from parsed YAML or fallback to markdown content
+        if (selectedTemplate.parsed && selectedTemplate.parsed.body && Array.isArray(selectedTemplate.parsed.body)) {
+          // Try to find a field with a value
+          const descField = selectedTemplate.parsed.body.find((b: any) => b.attributes && b.attributes.value);
+          description = descField?.attributes?.value || '';
+        } else if (selectedTemplate.content) {
+          description = selectedTemplate.content;
+        }
+      }
+      setAddRow((prev) => ({ ...prev, template: value, description }));
+    } else if (field === 'description') {
+      setAddRow((prev) => ({ ...prev, description: value }));
     } else {
       setAddRow((prev) => ({ ...prev, fields: { ...prev.fields, [field]: value } }));
     }
@@ -51,11 +82,11 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
     const newIssue: IssueRow = {
       id: addRow.id,
       title: addRow.title,
-      description: '',
+      description: addRow.description,
       fields: addRow.fields,
     };
     onUpdate(newIssue.id, newIssue); // Use onUpdate to add (parent should handle add if not exists)
-    setAddRow({ id: uuidv4(), title: '', fields: {} });
+    setAddRow({ id: uuidv4(), template: '', title: '', description: '', fields: {} });
     // Focus first input in new add row
     setTimeout(() => {
       if (addRowRef.current) {
@@ -96,6 +127,7 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className='p-3 border-r'>Template</TableHead>
               <TableHead className='p-3 border-r'>Title</TableHead>
               <TableHead className='p-3 border-r'>Description</TableHead>
               {/* Dynamic project fields */}
@@ -131,6 +163,7 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
               onAddRowChange={handleAddRowChange}
               onAddRowKeyDown={handleAddRowKeyDown}
               onAddRowSubmit={handleAddRowSubmit}
+              templates={templates}
             />
           </TableBody>
         </Table>

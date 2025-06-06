@@ -7,15 +7,27 @@ import { Edit2, Trash2 } from 'lucide-react';
 import { IssueRow } from './IssueCreator';
 import { GitHubProjectField } from '../types';
 
+// Define a type for parsed templates (copied from IssueForm/IssueTable)
+interface ParsedTemplate {
+  name: string;
+  path: string;
+  content: string;
+  parsed: {
+    body?: Array<{ attributes?: { value?: string } }>;
+    name?: string;
+  } | null;
+}
+
 // Types for props
 interface InlineIssueRowProps {
   // Add row props
   isAddRow?: boolean;
-  addRow?: { id: string; title: string; description: string; fields: Record<string, string> };
+  addRow?: { id: string; template: string; title: string; description: string; fields: Record<string, string> };
   renderedFields: GitHubProjectField[];
   onAddRowChange?: (field: string, value: string) => void;
   onAddRowKeyDown?: (e: React.KeyboardEvent, field: string) => void;
   onAddRowSubmit?: () => void;
+  templates?: ParsedTemplate[];
   // Edit/view row props
   issue?: IssueRow;
   inlineEdit?: { id: string; field: string } | null;
@@ -94,14 +106,29 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
     onInlineEditBlur,
     onEditClick,
     onDelete,
+    templates,
   } = props;
 
   // Add Row
   if (isAddRow && addRow) {
     return (
       <TableRow ref={ref}>
-        {/* Title cell */}
-        <TableCell className='font-medium p-0 h-[3.375rem] border-r' tabIndex={-1}>
+        <TableCell className='p-0 h-[3.375rem] border-r' tabIndex={-1}>
+          {/* Template select */}
+          <Select value={addRow.template} onValueChange={(val) => onAddRowChange && onAddRowChange('template', val)}>
+            <SelectTrigger className='h-full rounded-none border-none hover:bg-muted focus:bg-muted text-foreground border-none outline-none shadow-none'>
+              <SelectValue placeholder='Select template' />
+            </SelectTrigger>
+            <SelectContent>
+              {(templates || []).map((template) => (
+                <SelectItem key={template.name} value={template.name}>
+                  {template.parsed && template.parsed.name ? template.parsed.name : template.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </TableCell>
+        <TableCell className='p-0 h-[3.375rem] border-r'>
           {renderCell({
             field: { id: 'title', name: 'Title', type: 'text' },
             value: addRow.title,

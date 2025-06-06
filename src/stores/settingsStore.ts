@@ -6,6 +6,7 @@ interface Settings {
   projectId: string;
   token: string;
   isValid: boolean;
+  selectedRepo?: string;
 }
 
 interface SettingsState {
@@ -23,6 +24,7 @@ export const useSettingsStore = create<SettingsState>()(
         projectId: '',
         token: '',
         isValid: false,
+        selectedRepo: '',
       },
       isConfigured: false,
       updateSettings: (newSettings, validConnection) =>
@@ -45,6 +47,7 @@ export const useSettingsStore = create<SettingsState>()(
             projectId: '',
             token: '',
             isValid: false,
+            selectedRepo: '',
           },
           isConfigured: false,
         }),
@@ -57,6 +60,7 @@ export const useSettingsStore = create<SettingsState>()(
           projectId: state.settings.projectId,
           token: state.settings.token,
           isValid: state.settings.isValid,
+          selectedRepo: state.settings.selectedRepo,
         },
         isConfigured: state.isConfigured,
       }),

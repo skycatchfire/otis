@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Download, Upload, Send, X, ChevronsUpDown, Check } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../stores/settingsStore';
-import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields } from '../services/githubService';
+import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields, fetchIssueTemplates } from '../services/githubService';
 import IssueTable from './IssueTable';
 import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { GitHubProjectField } from '../types';
+import { GitHubProjectField, GitHubIssueTemplate } from '../types';
+import yaml from 'js-yaml';
 
 export interface IssueRow {
   id: string;
@@ -71,9 +72,19 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
   );
 };
 
+interface ParsedTemplate {
+  name: string;
+  path: string;
+  content: string;
+  parsed: {
+    body?: Array<{ attributes?: { value?: string } }>;
+    name?: string;
+  } | null;
+}
+
 const IssueCreator: React.FC = () => {
   const { settings, updateSettings } = useSettingsStore();
-  const [selectedRepo, setSelectedRepo] = useState<string>('');
+  const [selectedRepo, setSelectedRepo] = useState<string>(settings.selectedRepo || '');
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -92,7 +103,45 @@ const IssueCreator: React.FC = () => {
     }
   );
 
+  const { data: templates = [] } = useQuery(
+    ['issueTemplates', settings.organization, selectedRepo],
+    () => (selectedRepo ? fetchIssueTemplates(settings, selectedRepo) : Promise.resolve([])),
+    {
+      enabled: !!selectedRepo,
+    }
+  );
+
+  function isTemplate(obj: unknown): obj is { path: string; name: string; content: string } {
+    if (typeof obj !== 'object' || obj === null) return false;
+    const o = obj as Record<string, unknown>;
+    return typeof o.path === 'string' && typeof o.name === 'string' && typeof o.content === 'string';
+  }
+
+  const parsedTemplates: ParsedTemplate[] = React.useMemo(() => {
+    return (templates as GitHubIssueTemplate[])
+      .filter((template) => isTemplate(template) && template.path !== '.github/ISSUE_TEMPLATE/config.yml')
+      .map((template) => {
+        if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
+          try {
+            const parsed = yaml.load(template.content) as { body?: Array<{ attributes?: { value?: string } }>; name?: string };
+            return { ...template, parsed };
+          } catch (e) {
+            console.error(`Failed to parse YAML for template ${template.name}:`, e);
+            return { ...template, parsed: null };
+          }
+        }
+        return { ...template, parsed: null };
+      });
+  }, [templates]);
+
   const selectedProject = projects.find((p: { id: string }) => p.id === settings.projectId);
+
+  // Keep settings.selectedRepo in sync with local selectedRepo
+  useEffect(() => {
+    if (settings.selectedRepo !== selectedRepo) {
+      updateSettings({ selectedRepo });
+    }
+  }, [selectedRepo]);
 
   const addNewIssue = (issue: IssueRow) => {
     setIssues((prev) => [...prev, issue]);
@@ -282,7 +331,7 @@ const IssueCreator: React.FC = () => {
             </Button>
           </div>
 
-          <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} />
+          <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} templates={parsedTemplates} />
         </CardContent>
       </Card>
 

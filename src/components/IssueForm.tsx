@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
@@ -93,6 +93,22 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       estimate: initialData?.estimate || '',
     },
   });
+
+  // Autofill description when template is selected
+  useEffect(() => {
+    if (!selectedTemplate) return;
+    const template = parsedTemplates.find((t) => t.name === selectedTemplate);
+    if (template && template.parsed && Array.isArray(template.parsed.body)) {
+      // Concatenate all body items' values (if present)
+      const bodyText = template.parsed.body
+        .map((item) => (item.attributes && item.attributes.value ? item.attributes.value : ''))
+        .filter(Boolean)
+        .join('\n\n');
+      if (bodyText) {
+        setValue('description', bodyText);
+      }
+    }
+  }, [selectedTemplate, parsedTemplates, setValue]);
 
   const onFormSubmit = (data: BaseIssueRow) => {
     // Collect project field values into a 'fields' object
