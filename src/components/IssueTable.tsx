@@ -96,12 +96,14 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Title</TableHead>
+              <TableHead className='p-3 border-r'>Title</TableHead>
               {/* Dynamic project fields */}
               {renderedFields.map((field) => (
-                <TableHead key={field.id}>{field.name}</TableHead>
+                <TableHead key={field.id} className='p-3 border-r'>
+                  {field.name}
+                </TableHead>
               ))}
-              <TableHead className='text-right'>Actions</TableHead>
+              <TableHead className='text-right p-3'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
