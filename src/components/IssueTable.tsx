@@ -1,10 +1,11 @@
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { GitHubProjectField } from '../types';
 import InlineIssueRow from './InlineIssueRow';
 import { IssueRow } from './IssueCreator';
 import IssueForm from './IssueForm';
+import { useSettingsStore } from '../stores/settingsStore';
 
 // Define a type for parsed templates (copied from IssueForm)
 interface ParsedTemplate {
@@ -30,12 +31,28 @@ const RENDERED_FIELD_TYPES = ['SINGLE_SELECT', 'NUMBER', 'TEXT'];
 const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fields = [], templates = [] }) => {
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
   const [inlineEdit, setInlineEdit] = useState<{ id: string; field: string } | null>(null);
-  const [addRow, setAddRow] = useState<{ id: string; template: string; title: string; description: string; fields: Record<string, string> }>({
-    id: uuidv4(),
-    template: '',
-    title: '',
-    description: '',
-    fields: {},
+  const { lastUsedTemplate, lastUsedFields, setLastUsedTemplate, setLastUsedFields } = useSettingsStore();
+  const [addRow, setAddRow] = useState<{ id: string; template: string; title: string; description: string; fields: Record<string, string> }>(() => {
+    const template = lastUsedTemplate || '';
+    let description = '';
+    if (template) {
+      const selectedTemplate = templates.find((t) => t.name === template);
+      if (selectedTemplate) {
+        if (selectedTemplate.parsed && selectedTemplate.parsed.body && Array.isArray(selectedTemplate.parsed.body)) {
+          const descField = selectedTemplate.parsed.body.find((b: { attributes?: { value?: string } }) => b.attributes && b.attributes.value);
+          description = descField?.attributes?.value || '';
+        } else if (selectedTemplate.content) {
+          description = selectedTemplate.content;
+        }
+      }
+    }
+    return {
+      id: uuidv4(),
+      template,
+      title: '',
+      description,
+      fields: lastUsedFields ? { ...lastUsedFields } : {},
+    };
   });
   const addRowRef = React.useRef<HTMLTableRowElement>(null);
 
@@ -63,7 +80,7 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
         // Try to get description from parsed YAML or fallback to markdown content
         if (selectedTemplate.parsed && selectedTemplate.parsed.body && Array.isArray(selectedTemplate.parsed.body)) {
           // Try to find a field with a value
-          const descField = selectedTemplate.parsed.body.find((b: any) => b.attributes && b.attributes.value);
+          const descField = selectedTemplate.parsed.body.find((b: { attributes?: { value?: string } }) => b.attributes && b.attributes.value);
           description = descField?.attributes?.value || '';
         } else if (selectedTemplate.content) {
           description = selectedTemplate.content;
@@ -84,9 +101,12 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
       title: addRow.title,
       description: addRow.description,
       fields: addRow.fields,
+      template: addRow.template,
     };
     onUpdate(newIssue.id, newIssue); // Use onUpdate to add (parent should handle add if not exists)
-    setAddRow({ id: uuidv4(), template: '', title: '', description: '', fields: {} });
+    setLastUsedTemplate(addRow.template);
+    setLastUsedFields(addRow.fields);
+    setAddRow({ id: uuidv4(), template: addRow.template, title: '', description: '', fields: { ...addRow.fields } });
     // Focus first input in new add row
     setTimeout(() => {
       if (addRowRef.current) {
@@ -105,6 +125,19 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
     if (!issue) return;
     if (field === 'title') {
       onUpdate(id, { ...issue, title: value });
+    } else if (field === 'template') {
+      // Find the selected template and auto-populate description
+      const selectedTemplate = templates.find((t) => t.name === value);
+      let description = issue.description;
+      if (selectedTemplate) {
+        if (selectedTemplate.parsed && selectedTemplate.parsed.body && Array.isArray(selectedTemplate.parsed.body)) {
+          const descField = selectedTemplate.parsed.body.find((b: { attributes?: { value?: string } }) => b.attributes && b.attributes.value);
+          description = descField?.attributes?.value || '';
+        } else if (selectedTemplate.content) {
+          description = selectedTemplate.content;
+        }
+      }
+      onUpdate(id, { ...issue, template: value, description });
     } else {
       onUpdate(id, { ...issue, fields: { ...issue.fields, [field]: value } });
     }
@@ -120,6 +153,25 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
       handleAddRowSubmit();
     }
   };
+
+  // Ensure description is set if template is auto-selected and templates load after mount
+  useEffect(() => {
+    if (addRow.template && !addRow.description && templates.length > 0) {
+      const selectedTemplate = templates.find((t) => t.name === addRow.template);
+      let description = '';
+      if (selectedTemplate) {
+        if (selectedTemplate.parsed && selectedTemplate.parsed.body && Array.isArray(selectedTemplate.parsed.body)) {
+          const descField = selectedTemplate.parsed.body.find((b: { attributes?: { value?: string } }) => b.attributes && b.attributes.value);
+          description = descField?.attributes?.value || '';
+        } else if (selectedTemplate.content) {
+          description = selectedTemplate.content;
+        }
+      }
+      if (description) {
+        setAddRow((prev) => ({ ...prev, description }));
+      }
+    }
+  }, [addRow.template, addRow.description, templates]);
 
   return (
     <>
@@ -145,13 +197,13 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
                 key={issue.id}
                 issue={issue}
                 renderedFields={renderedFields}
-                isEditing={inlineEdit && inlineEdit.id === issue.id}
                 inlineEdit={inlineEdit}
                 onCellClick={handleCellClick}
                 onInlineEditChange={handleInlineEditChange}
                 onInlineEditBlur={handleInlineEditBlur}
                 onEditClick={() => setEditingIssueId(issue.id)}
                 onDelete={() => onDelete(issue.id)}
+                templates={templates}
               />
             ))}
             {/* Always-visible add row */}

@@ -43,8 +43,8 @@ interface IssueRowWithFields extends BaseIssueRow {
 }
 
 const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, selectedRepo }) => {
-  const { settings, isConfigured } = useSettingsStore();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const { settings, isConfigured, lastUsedTemplate, lastUsedFields, setLastUsedTemplate, setLastUsedFields } = useSettingsStore();
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(lastUsedTemplate || '');
 
   const { data: fields = [] } = useQuery(['projectFields', settings.projectId], () => fetchProjectFields(settings, settings.projectId), {
     enabled: isConfigured && !!settings.projectId,
@@ -91,31 +91,34 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       type: initialData?.type || '',
       assignee: initialData?.assignee || '',
       estimate: initialData?.estimate || '',
+      // Prefill dynamic fields from lastUsedFields if not editing
+      ...(lastUsedFields && !initialData ? Object.fromEntries(Object.entries(lastUsedFields).map(([k, v]) => [k, v])) : {}),
     },
   });
 
-  // Autofill description when template is selected
+  // When the form opens, if lastUsedTemplate is set and no initialData, auto-populate description
   useEffect(() => {
-    if (!selectedTemplate) return;
-    const template = parsedTemplates.find((t) => t.name === selectedTemplate);
-    if (template && template.parsed && Array.isArray(template.parsed.body)) {
-      // Concatenate all body items' values (if present)
-      const bodyText = template.parsed.body
-        .map((item) => (item.attributes && item.attributes.value ? item.attributes.value : ''))
-        .filter(Boolean)
-        .join('\n\n');
-      if (bodyText) {
-        setValue('description', bodyText);
+    if (!initialData && lastUsedTemplate) {
+      const template = parsedTemplates.find((t) => t.name === lastUsedTemplate);
+      if (template && template.parsed && Array.isArray(template.parsed.body)) {
+        const bodyText = template.parsed.body
+          .map((item) => (item.attributes && item.attributes.value ? item.attributes.value : ''))
+          .filter(Boolean)
+          .join('\n\n');
+        if (bodyText) {
+          setValue('description', bodyText);
+        }
       }
     }
-  }, [selectedTemplate, parsedTemplates, setValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedTemplates, lastUsedTemplate, initialData, setValue]);
 
   const onFormSubmit = (data: BaseIssueRow) => {
     // Collect project field values into a 'fields' object
-    const fieldsObj: Record<string, unknown> = {};
+    const fieldsObj: Record<string, string> = {};
     fields.forEach((field: GitHubProjectField) => {
       if (data[field.id as keyof BaseIssueRow] !== undefined && data[field.id as keyof BaseIssueRow] !== '') {
-        fieldsObj[field.id] = data[field.id as keyof BaseIssueRow];
+        fieldsObj[field.id] = data[field.id as keyof BaseIssueRow] as string;
       }
     });
     // Remove project field keys from the top-level data
@@ -123,10 +126,13 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     fields.forEach((field: GitHubProjectField) => {
       delete cleanedData[field.id];
     });
+    setLastUsedTemplate(selectedTemplate);
+    setLastUsedFields(fieldsObj);
     onSubmit({
       ...(cleanedData as unknown as BaseIssueRow),
       labels: data.labels || [],
       fields: Object.keys(fieldsObj).length > 0 ? fieldsObj : undefined,
+      template: selectedTemplate,
     } as IssueRowWithFields);
   };
 

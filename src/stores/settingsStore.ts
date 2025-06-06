@@ -12,8 +12,12 @@ interface Settings {
 interface SettingsState {
   settings: Settings;
   isConfigured: boolean;
+  lastUsedTemplate?: string;
+  lastUsedFields?: Record<string, string>;
   updateSettings: (settings: Partial<Settings>, validConnection?: boolean) => void;
   clearSettings: () => void;
+  setLastUsedTemplate: (template: string) => void;
+  setLastUsedFields: (fields: Record<string, string>) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -27,6 +31,8 @@ export const useSettingsStore = create<SettingsState>()(
         selectedRepo: '',
       },
       isConfigured: false,
+      lastUsedTemplate: '',
+      lastUsedFields: {},
       updateSettings: (newSettings, validConnection) =>
         set((state) => ({
           settings: {
@@ -50,7 +56,11 @@ export const useSettingsStore = create<SettingsState>()(
             selectedRepo: '',
           },
           isConfigured: false,
+          lastUsedTemplate: '',
+          lastUsedFields: {},
         }),
+      setLastUsedTemplate: (template) => set({ lastUsedTemplate: template }),
+      setLastUsedFields: (fields) => set({ lastUsedFields: fields }),
     }),
     {
       name: 'github-issue-creator-settings',
@@ -63,6 +73,8 @@ export const useSettingsStore = create<SettingsState>()(
           selectedRepo: state.settings.selectedRepo,
         },
         isConfigured: state.isConfigured,
+        lastUsedTemplate: state.lastUsedTemplate,
+        lastUsedFields: state.lastUsedFields,
       }),
     }
   )

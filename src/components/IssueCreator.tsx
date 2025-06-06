@@ -26,6 +26,7 @@ export interface IssueRow {
   estimate?: string;
   fields?: Record<string, unknown>;
   images?: File[];
+  template?: string;
 }
 
 interface ConfirmDialogProps {
@@ -162,7 +163,7 @@ const IssueCreator: React.FC = () => {
         return [...prev, { ...updates, id } as IssueRow];
       }
       // Update existing issue
-      return prev.map((issue) => (issue.id === id ? { ...issue, ...updates } : issue));
+      return prev.map((issue) => (issue.id === id ? { ...issue, ...updates, template: updates.template ?? issue.template } : issue));
     });
   };
 

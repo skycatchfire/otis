@@ -180,6 +180,21 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
   if (!issue) return null;
   return (
     <TableRow>
+      <TableCell className='p-0 h-[3.375rem] border-r' tabIndex={-1}>
+        {/* Template dropdown for edit/view row */}
+        <Select value={issue.template || ''} onValueChange={(val) => onInlineEditChange && onInlineEditChange(issue.id, 'template', val)}>
+          <SelectTrigger className='h-full rounded-none hover:bg-muted focus:bg-muted text-foreground border-none outline-none shadow-none'>
+            <SelectValue placeholder='Select template' />
+          </SelectTrigger>
+          <SelectContent>
+            {(templates || []).map((template) => (
+              <SelectItem key={template.name} value={template.name}>
+                {template.parsed && template.parsed.name ? template.parsed.name : template.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
       <TableCell
         className='font-medium p-0 h-[3.375rem] border-r'
         onFocus={() => onCellClick && onCellClick(issue.id, 'title')}
