@@ -40,30 +40,24 @@ function App() {
   }, [settings.theme]);
 
   return (
-    <div className='min-h-screen bg-background text-foreground'>
+    <div className="min-h-screen bg-background text-foreground">
       <Header>
-        <Button
-          variant='ghost'
-          onClick={() => setIsSettingsOpen(true)}
-          className='ml-auto flex items-center justify-center rounded-full'
-          aria-label='Settings'
-          size='icon'
-        >
-          <SettingsIcon className='w-5 h-5' />
+        <Button variant="ghost" onClick={() => setIsSettingsOpen(true)} className="ml-auto flex items-center justify-center rounded-full" aria-label="Settings" size="icon">
+          <SettingsIcon className="w-5 h-5" />
         </Button>
       </Header>
 
-      <main className='container mx-auto px-4 py-8'>
+      <main className="container mx-auto px-4 py-8">
         {isConfigured ? (
           <IssueCreator />
         ) : (
-          <div className='flex flex-col items-center justify-center h-[70vh] text-center'>
-            <img src={logo} alt='Otis' className='size-40 mb-4' />
-            <h2 className='text-2xl font-bold mb-4'>Welcome to Otis</h2>
-            <p className='text-gray-600 dark:text-gray-400 mb-6 max-w-lg'>
+          <div className="flex flex-col items-center justify-center h-[70vh] text-center">
+            <img src={logo} alt="Otis" className="size-60 mb-4 floating-logo" />
+            <h2 className="text-2xl font-bold mb-4">Welcome to Otis</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-lg">
               Connect to your GitHub project to start creating issues in bulk. Click the settings icon to configure your GitHub connection.
             </p>
-            <Button onClick={() => setIsSettingsOpen(true)} variant='default'>
+            <Button onClick={() => setIsSettingsOpen(true)} variant="default">
               Configure Settings
             </Button>
           </div>

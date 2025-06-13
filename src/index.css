@@ -97,3 +97,19 @@
     --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
   }
 }
+
+@keyframes float {
+  0% {
+    transform: translatey(0px);
+  }
+  50% {
+    transform: translatey(-40px) scale(1.05);
+  }
+  100% {
+    transform: translatey(0px);
+  }
+}
+.floating-logo {
+  @apply origin-bottom;
+  animation: float 6s ease-in-out infinite;
+}
