@@ -6,6 +6,7 @@ import Header from './components/Header';
 import IssueCreator from './components/IssueCreator';
 import SettingsModal from './components/SettingsModal';
 import { useSettingsStore } from './stores/settingsStore';
+import logo from '@/assets/logo.png';
 
 const setBodyClassForTheme = (theme: string) => {
   if (typeof document === 'undefined') return;
@@ -57,6 +58,7 @@ function App() {
           <IssueCreator />
         ) : (
           <div className='flex flex-col items-center justify-center h-[70vh] text-center'>
+            <img src={logo} alt='Otis' className='size-40 mb-4' />
             <h2 className='text-2xl font-bold mb-4'>Welcome to Otis</h2>
             <p className='text-gray-600 dark:text-gray-400 mb-6 max-w-lg'>
               Connect to your GitHub project to start creating issues in bulk. Click the settings icon to configure your GitHub connection.

@@ -228,8 +228,6 @@ export const fetchProjectFields = async (credentials: GitHubCredentials, project
       options?: Array<{ id: string; name: string }>;
     };
 
-    console.log(response.data.data.node.fields?.nodes);
-
     return (response.data.data.node.fields?.nodes || [])
       .filter((field: ProjectFieldNode) => field && field.dataType !== 'TITLE')
       .map((field: ProjectFieldNode) => ({

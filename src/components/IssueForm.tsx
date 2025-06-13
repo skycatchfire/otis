@@ -75,6 +75,25 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
   useEffect(() => {
     if (!initialData && lastUsedTemplate) {
       const template = parsedTemplates.find((t) => t.name === lastUsedTemplate);
+      console.log('template', template);
+      if (template && template.parsed && Array.isArray(template.parsed.body)) {
+        const bodyText = template.parsed.body
+          .map((item) => (item.attributes && item.attributes.value ? item.attributes.value : ''))
+          .filter(Boolean)
+          .join('\n\n');
+        console.log('bodyText', bodyText);
+        if (bodyText) {
+          setValue('description', bodyText);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedTemplates, lastUsedTemplate, initialData, setValue]);
+
+  // Auto-populate description when selectedTemplate changes
+  useEffect(() => {
+    if (selectedTemplate) {
+      const template = parsedTemplates.find((t) => t.name === selectedTemplate);
       if (template && template.parsed && Array.isArray(template.parsed.body)) {
         const bodyText = template.parsed.body
           .map((item) => (item.attributes && item.attributes.value ? item.attributes.value : ''))
@@ -85,8 +104,9 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
         }
       }
     }
+    // Only run when selectedTemplate changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parsedTemplates, lastUsedTemplate, initialData, setValue]);
+  }, [selectedTemplate]);
 
   const onFormSubmit = (data: BaseIssueRow) => {
     // Collect project field values into a 'fields' object

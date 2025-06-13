@@ -14,7 +14,6 @@ export function parseIssueTemplates(templates: GitHubIssueTemplate[]): ParsedTem
       if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
         try {
           const parsed = yaml.load(template.content) as { body?: Array<{ attributes?: { value?: string } }>; name?: string };
-          console.log('parsed', parsed);
           return { ...template, parsed };
         } catch (e) {
           console.error(`Failed to parse YAML for template ${template.name}:`, e);
@@ -22,7 +21,6 @@ export function parseIssueTemplates(templates: GitHubIssueTemplate[]): ParsedTem
         }
       }
 
-      console.log('template', template);
       return { ...template, parsed: null };
     });
 }
