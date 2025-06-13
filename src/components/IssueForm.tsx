@@ -1,40 +1,24 @@
-import React, { useState, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useQuery } from 'react-query';
 import { useSettingsStore } from '../stores/settingsStore';
 import { fetchProjectFields, fetchIssueTemplates } from '../services/githubService';
 import { IssueRow as BaseIssueRow } from './IssueCreator';
-import { GitHubIssueTemplate, GitHubProjectField } from '../types';
-import yaml from 'js-yaml';
+import { GitHubProjectField, ParsedTemplate } from '../types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { parseIssueTemplates } from '../lib/utils';
 
 interface IssueFormProps {
   initialData?: Partial<BaseIssueRow>;
   onSubmit: (issue: BaseIssueRow) => void;
   onCancel: () => void;
-  selectedRepo?: string;
-}
-
-// Define a type for parsed templates
-interface ParsedTemplate extends GitHubIssueTemplate {
-  parsed: {
-    body: Array<{ attributes?: { value?: string } }>;
-    name: string;
-  } | null;
-}
-
-// Helper type guard for parsed template
-function hasName(obj: unknown): obj is { name: string } {
-  return (
-    typeof obj === 'object' && obj !== null && 'name' in (obj as Record<string, unknown>) && typeof (obj as Record<string, unknown>).name === 'string'
-  );
 }
 
 // Extend IssueRow to allow a 'fields' property for form submission
@@ -42,42 +26,37 @@ interface IssueRowWithFields extends BaseIssueRow {
   fields?: Record<string, unknown>;
 }
 
-const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, selectedRepo }) => {
-  const { settings, isConfigured } = useSettingsStore();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }) => {
+  const { settings, isConfigured, lastUsedTemplate, lastUsedFields, setLastUsedTemplate, setLastUsedFields } = useSettingsStore();
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(initialData?.template || lastUsedTemplate || '');
 
   const { data: fields = [] } = useQuery(['projectFields', settings.projectId], () => fetchProjectFields(settings, settings.projectId), {
     enabled: isConfigured && !!settings.projectId,
   });
 
   const { data: templates = [] } = useQuery(
-    ['issueTemplates', settings.organization, selectedRepo],
-    () => (selectedRepo ? fetchIssueTemplates(settings, selectedRepo) : Promise.resolve([])),
+    ['issueTemplates', settings.organization, settings.selectedRepo],
+    () => (settings.selectedRepo ? fetchIssueTemplates(settings, settings.selectedRepo) : Promise.resolve([])),
     {
-      enabled: !!selectedRepo,
+      enabled: !!settings.selectedRepo,
     }
   );
 
-  // Parse YAML templates into JSON objects
-  const parsedTemplates: ParsedTemplate[] = useMemo(() => {
-    return (templates as GitHubIssueTemplate[]).map((template) => {
-      if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
-        try {
-          const parsed: unknown = yaml.load(template.content);
-          return { ...template, parsed: parsed as { body: Array<{ attributes?: { value?: string } }>; name: string } };
-        } catch (e) {
-          console.error(`Failed to parse YAML for template ${template.name}:`, e);
-          return { ...template, parsed: null };
-        }
-      }
-      return { ...template, parsed: null };
-    });
-  }, [templates]);
+  // Parse YAML templates into JSON objects, ignoring config.yaml
+  const parsedTemplates: ParsedTemplate[] = useMemo(() => parseIssueTemplates(templates as ParsedTemplate[]), [templates]);
+
+  // Prepare default values for useForm
+  const dynamicFieldDefaults = initialData?.fields
+    ? Object.fromEntries(Object.entries(initialData.fields).map(([k, v]) => [k, v]))
+    : lastUsedFields && !initialData
+    ? Object.fromEntries(Object.entries(lastUsedFields).map(([k, v]) => [k, v]))
+    : {};
 
   const {
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors },
   } = useForm<BaseIssueRow>({
     defaultValues: {
@@ -88,15 +67,33 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
       type: initialData?.type || '',
       assignee: initialData?.assignee || '',
       estimate: initialData?.estimate || '',
+      ...dynamicFieldDefaults,
     },
   });
 
+  // When the form opens, if lastUsedTemplate is set and no initialData, auto-populate description
+  useEffect(() => {
+    if (!initialData && lastUsedTemplate) {
+      const template = parsedTemplates.find((t) => t.name === lastUsedTemplate);
+      if (template && template.parsed && Array.isArray(template.parsed.body)) {
+        const bodyText = template.parsed.body
+          .map((item) => (item.attributes && item.attributes.value ? item.attributes.value : ''))
+          .filter(Boolean)
+          .join('\n\n');
+        if (bodyText) {
+          setValue('description', bodyText);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedTemplates, lastUsedTemplate, initialData, setValue]);
+
   const onFormSubmit = (data: BaseIssueRow) => {
     // Collect project field values into a 'fields' object
-    const fieldsObj: Record<string, unknown> = {};
+    const fieldsObj: Record<string, string> = {};
     fields.forEach((field: GitHubProjectField) => {
       if (data[field.id as keyof BaseIssueRow] !== undefined && data[field.id as keyof BaseIssueRow] !== '') {
-        fieldsObj[field.id] = data[field.id as keyof BaseIssueRow];
+        fieldsObj[field.id] = data[field.id as keyof BaseIssueRow] as string;
       }
     });
     // Remove project field keys from the top-level data
@@ -104,35 +101,46 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
     fields.forEach((field: GitHubProjectField) => {
       delete cleanedData[field.id];
     });
+    setLastUsedTemplate(selectedTemplate);
+    setLastUsedFields(fieldsObj);
     onSubmit({
       ...(cleanedData as unknown as BaseIssueRow),
       labels: data.labels || [],
       fields: Object.keys(fieldsObj).length > 0 ? fieldsObj : undefined,
+      template: selectedTemplate,
     } as IssueRowWithFields);
   };
 
   const renderField = (field: GitHubProjectField) => {
-    const fieldProps = register(field.id as keyof BaseIssueRow);
     switch (field.type) {
       case 'SINGLE_SELECT':
         return (
-          <Select {...fieldProps} onValueChange={(val) => setValue(field.id as keyof BaseIssueRow, val)}>
-            <SelectTrigger>
-              <SelectValue placeholder={`Select ${field.name}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {field.options.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            name={field.id as keyof BaseIssueRow}
+            control={control}
+            render={({ field: controllerField }) => (
+              <Select
+                value={typeof controllerField.value === 'string' ? controllerField.value : ''}
+                onValueChange={(val) => controllerField.onChange(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={`Select ${field.name}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {field.options.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         );
       case 'NUMBER':
-        return <Input type='number' id={field.id} {...fieldProps} />;
+        return <Input type='number' id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
       case 'TEXT':
-        return <Input type='text' id={field.id} {...fieldProps} />;
+        return <Input type='text' id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
       default:
         return null;
     }
@@ -154,7 +162,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <div className='space-y-4'>
-            {selectedRepo && (
+            {settings.selectedRepo && (
               <div>
                 <Label htmlFor='template'>Issue Template</Label>
                 <Select value={selectedTemplate} onValueChange={(val) => setSelectedTemplate(val)}>
@@ -164,7 +172,10 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel, 
                   <SelectContent>
                     {parsedTemplates.map((template: ParsedTemplate) => (
                       <SelectItem key={template.name} value={template.name}>
-                        {hasName(template.parsed) ? template.parsed.name : template.name}
+                        <span className='flex flex-col text-left'>
+                          <span>{template.parsed?.name || template.name}</span>
+                          {template.parsed?.description && <span className='text-xs text-muted-foreground'>{template.parsed.description}</span>}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import { PlusCircle, Download, Upload, Send, X, ChevronsUpDown, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { PlusCircle, Download, Upload, Send, ChevronsUpDown, Check } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../stores/settingsStore';
-import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields } from '../services/githubService';
+import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields, fetchIssueTemplates } from '../services/githubService';
 import IssueTable from './IssueTable';
 import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { GitHubProjectField } from '../types';
+import { GitHubProjectField, ParsedTemplate } from '../types';
+import { parseIssueTemplates } from '../lib/utils';
 
 export interface IssueRow {
   id: string;
@@ -25,6 +26,7 @@ export interface IssueRow {
   estimate?: string;
   fields?: Record<string, unknown>;
   images?: File[];
+  template?: string;
 }
 
 interface ConfirmDialogProps {
@@ -32,10 +34,10 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   issueCount: number;
-  projectId: string;
+  projectName: string;
 }
 
-const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCancel, issueCount, projectId }) => {
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCancel, issueCount, projectName }) => {
   return (
     <Dialog
       open={isOpen}
@@ -45,19 +47,15 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Issue Creation</DialogTitle>
-          <DialogDescription>
-            This will create {issueCount} issues in project #{projectId}. This action cannot be undone.
-          </DialogDescription>
-          <DialogClose asChild>
-            <Button onClick={onCancel} variant='ghost' size='icon' aria-label='Close'>
-              <X className='w-5 h-5' />
-            </Button>
-          </DialogClose>
+          <DialogTitle>Confirm Bulk Issue Creation</DialogTitle>
+          <DialogDescription></DialogDescription>
         </DialogHeader>
-        <p className='text-muted-foreground mb-6'>
-          Are you sure you want to create {issueCount} issues in project #{projectId}? This action cannot be undone.
+
+        <p>
+          You&apos;re about to create <strong className='font-semibold'>{issueCount}</strong> issues in{' '}
+          <strong className='font-semibold'>{projectName}</strong>. Are you sure you want to proceed?
         </p>
+
         <div className='flex justify-end gap-3'>
           <Button onClick={onCancel} variant='secondary'>
             Cancel
@@ -72,12 +70,13 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
 };
 
 const IssueCreator: React.FC = () => {
-  const { settings, updateSettings } = useSettingsStore();
-  const [selectedRepo, setSelectedRepo] = useState<string>('');
-  const [issues, setIssues] = useState<IssueRow[]>([]);
+  const { settings, updateSettings, draftIssues, setDraftIssues } = useSettingsStore();
+  const [selectedRepo, setSelectedRepo] = useState<string>(settings.selectedRepo || '');
+  const [issues, setIssues] = useState<IssueRow[]>(draftIssues || []);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
 
   const { data: projects = [] } = useQuery(['projects', settings.organization, settings.token], () => fetchProjects(settings), {
     enabled: !!settings.organization && !!settings.token,
@@ -92,7 +91,35 @@ const IssueCreator: React.FC = () => {
     }
   );
 
+  const { data: templates = [] } = useQuery(
+    ['issueTemplates', settings.organization, selectedRepo],
+    () => (selectedRepo ? fetchIssueTemplates(settings, selectedRepo) : Promise.resolve([])),
+    {
+      enabled: !!selectedRepo,
+    }
+  );
+
+  const parsedTemplates: ParsedTemplate[] = React.useMemo(() => parseIssueTemplates(templates as ParsedTemplate[]), [templates]);
+
   const selectedProject = projects.find((p: { id: string }) => p.id === settings.projectId);
+
+  // Keep settings.selectedRepo in sync with local selectedRepo
+  useEffect(() => {
+    if (settings.selectedRepo !== selectedRepo) {
+      updateSettings({ selectedRepo });
+    }
+  }, [selectedRepo]);
+
+  // Keep issues in sync with draftIssues in the store
+  useEffect(() => {
+    setIssues(draftIssues || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    setDraftIssues(issues);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issues]);
 
   const addNewIssue = (issue: IssueRow) => {
     setIssues((prev) => [...prev, issue]);
@@ -106,7 +133,15 @@ const IssueCreator: React.FC = () => {
   };
 
   const updateIssue = (id: string, updates: Partial<IssueRow>) => {
-    setIssues((prev) => prev.map((issue) => (issue.id === id ? { ...issue, ...updates } : issue)));
+    setIssues((prev) => {
+      const idx = prev.findIndex((issue) => issue.id === id);
+      if (idx === -1) {
+        // Add new issue
+        return [...prev, { ...updates, id } as IssueRow];
+      }
+      // Update existing issue
+      return prev.map((issue) => (issue.id === id ? { ...issue, ...updates, template: updates.template ?? issue.template } : issue));
+    });
   };
 
   const exportToJson = () => {
@@ -180,6 +215,7 @@ const IssueCreator: React.FC = () => {
       });
 
       setIssues([]);
+      setDraftIssues([]); // Clear drafts after submit
       toast('All issues created successfully');
     } catch {
       toast('Failed to create some issues. Please check the console for details.');
@@ -191,7 +227,7 @@ const IssueCreator: React.FC = () => {
 
   return (
     <div>
-      <Card>
+      <Card className='border-none shadow-none'>
         <CardContent className='p-6'>
           <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
             <h2 className='sr-only'>Bulk Issue Creator</h2>
@@ -274,24 +310,27 @@ const IssueCreator: React.FC = () => {
             </Button>
           </div>
 
-          {issues.length > 0 ? (
-            <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} />
-          ) : (
-            <div className='text-center py-12 border-2 border-dashed border-border rounded-lg'>
-              <p className='text-muted-foreground'>No issues added yet. Add your first issue to get started.</p>
-            </div>
-          )}
+          <IssueTable
+            issues={issues}
+            onUpdate={updateIssue}
+            onDelete={removeIssue}
+            fields={fields}
+            templates={parsedTemplates}
+            editingIssueId={editingIssueId}
+            setEditingIssueId={setEditingIssueId}
+            onCloseEdit={() => setEditingIssueId(null)}
+          />
         </CardContent>
       </Card>
 
-      {isFormOpen && <IssueForm onSubmit={addNewIssue} onCancel={() => setIsFormOpen(false)} selectedRepo={selectedRepo} />}
+      {isFormOpen && <IssueForm onSubmit={addNewIssue} onCancel={() => setIsFormOpen(false)} />}
 
       <ConfirmDialog
         isOpen={isConfirmOpen}
         onConfirm={handleSubmitIssues}
         onCancel={() => setIsConfirmOpen(false)}
         issueCount={issues.length}
-        projectId={settings.projectId}
+        projectName={selectedProject ? `${selectedProject.name} (#${selectedProject.number})` : ''}
       />
     </div>
   );

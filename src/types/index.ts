@@ -72,3 +72,11 @@ export interface GitHubIssue {
   updated_at: string;
   closed_at: string | null;
 }
+
+export interface ParsedTemplate extends GitHubIssueTemplate {
+  parsed: {
+    body?: Array<{ attributes?: { value?: string } }>;
+    name?: string;
+    description?: string;
+  } | null;
+}

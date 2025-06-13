@@ -162,20 +162,7 @@ export const fetchIssueTemplates = async (credentials: GitHubCredentials, repoNa
           const { content, encoding } = fileResponse.data;
           let decodedContent = content;
           if (encoding === 'base64') {
-            if (typeof window !== 'undefined' && window.atob) {
-              decodedContent = window.atob(content.replace(/\n/g, ''));
-            } else {
-              // Use a type-safe check for Buffer in Node.js environments
-              const BufferCtor =
-                typeof (globalThis as unknown as { Buffer?: unknown }).Buffer !== 'undefined'
-                  ? ((globalThis as unknown as { Buffer?: unknown }).Buffer as {
-                      from: (input: string, encoding: string) => { toString: (encoding: string) => string };
-                    })
-                  : undefined;
-              if (BufferCtor) {
-                decodedContent = BufferCtor.from(content, 'base64').toString('utf-8');
-              }
-            }
+            decodedContent = base64ToUtf8(content);
           }
           return {
             name: file.name.replace(/\.(md|yaml|yml)$/, ''),
@@ -472,3 +459,9 @@ export const createBatchRepoIssuesAndAddToProject = async (
   }
   return results;
 };
+
+function base64ToUtf8(base64: string): string {
+  const binaryString = atob(base64.replace(/\n/g, ''));
+  const bytes = Uint8Array.from(binaryString, (c) => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
