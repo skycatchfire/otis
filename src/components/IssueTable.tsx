@@ -24,13 +24,25 @@ interface IssueTableProps {
   onDelete: (id: string) => void;
   fields?: GitHubProjectField[];
   templates?: ParsedTemplate[];
+  editingIssueId?: string | null;
+  setEditingIssueId?: (id: string | null) => void;
+  onCloseEdit?: () => void;
 }
 
 const RENDERED_FIELD_TYPES = ['SINGLE_SELECT', 'NUMBER', 'TEXT'];
 
-const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fields = [], templates = [] }) => {
-  const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
+const IssueTable: React.FC<IssueTableProps> = ({
+  issues,
+  onUpdate,
+  onDelete,
+  fields = [],
+  templates = [],
+  editingIssueId,
+  setEditingIssueId,
+  onCloseEdit,
+}) => {
   const [inlineEdit, setInlineEdit] = useState<{ id: string; field: string } | null>(null);
+  const [editingAddRowData, setEditingAddRowData] = useState<any | null>(null);
   const { lastUsedTemplate, lastUsedFields, setLastUsedTemplate, setLastUsedFields } = useSettingsStore();
   const [addRow, setAddRow] = useState<{ id: string; template: string; title: string; description: string; fields: Record<string, string> }>(() => {
     const template = lastUsedTemplate || '';
@@ -66,7 +78,7 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
 
   const handleUpdate = (updatedIssue: IssueRow) => {
     onUpdate(updatedIssue.id, updatedIssue);
-    setEditingIssueId(null);
+    setEditingIssueId && setEditingIssueId(null);
   };
 
   const handleAddRowChange = (field: string, value: string) => {
@@ -201,9 +213,10 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
                 onCellClick={handleCellClick}
                 onInlineEditChange={handleInlineEditChange}
                 onInlineEditBlur={handleInlineEditBlur}
-                onEditClick={() => setEditingIssueId(issue.id)}
+                onEditClick={() => setEditingIssueId && setEditingIssueId(issue.id)}
                 onDelete={() => onDelete(issue.id)}
                 templates={templates}
+                onExpandClick={() => setEditingIssueId && setEditingIssueId(issue.id)}
               />
             ))}
             {/* Always-visible add row */}
@@ -216,12 +229,36 @@ const IssueTable: React.FC<IssueTableProps> = ({ issues, onUpdate, onDelete, fie
               onAddRowKeyDown={handleAddRowKeyDown}
               onAddRowSubmit={handleAddRowSubmit}
               templates={templates}
+              onExpandClick={() => {
+                setEditingAddRowData(addRow);
+                setEditingIssueId && setEditingIssueId('add');
+              }}
             />
           </TableBody>
         </Table>
       </div>
 
-      {editingIssueId && <IssueForm initialData={getEditingIssue() || undefined} onSubmit={handleUpdate} onCancel={() => setEditingIssueId(null)} />}
+      {editingIssueId === 'add' && editingAddRowData && (
+        <IssueForm
+          initialData={editingAddRowData}
+          onSubmit={(newIssue) => {
+            onUpdate(newIssue.id, newIssue);
+            setEditingAddRowData(null);
+            setEditingIssueId && setEditingIssueId(null);
+          }}
+          onCancel={() => {
+            setEditingAddRowData(null);
+            setEditingIssueId && setEditingIssueId(null);
+          }}
+        />
+      )}
+      {editingIssueId && editingIssueId !== 'add' && (
+        <IssueForm
+          initialData={getEditingIssue() || undefined}
+          onSubmit={handleUpdate}
+          onCancel={onCloseEdit || (() => setEditingIssueId && setEditingIssueId(null))}
+        />
+      )}
     </>
   );
 };

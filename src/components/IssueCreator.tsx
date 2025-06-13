@@ -76,6 +76,7 @@ const IssueCreator: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
 
   const { data: projects = [] } = useQuery(['projects', settings.organization, settings.token], () => fetchProjects(settings), {
     enabled: !!settings.organization && !!settings.token,
@@ -309,7 +310,16 @@ const IssueCreator: React.FC = () => {
             </Button>
           </div>
 
-          <IssueTable issues={issues} onUpdate={updateIssue} onDelete={removeIssue} fields={fields} templates={parsedTemplates} />
+          <IssueTable
+            issues={issues}
+            onUpdate={updateIssue}
+            onDelete={removeIssue}
+            fields={fields}
+            templates={parsedTemplates}
+            editingIssueId={editingIssueId}
+            setEditingIssueId={setEditingIssueId}
+            onCloseEdit={() => setEditingIssueId(null)}
+          />
         </CardContent>
       </Card>
 

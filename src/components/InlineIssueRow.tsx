@@ -1,11 +1,11 @@
-import React, { forwardRef } from 'react';
-import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit2, Trash2 } from 'lucide-react';
-import { IssueRow } from './IssueCreator';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { Edit2, Maximize2Icon, Trash2 } from 'lucide-react';
+import React, { forwardRef } from 'react';
 import { GitHubProjectField, ParsedTemplate } from '../types';
+import { IssueRow } from './IssueCreator';
 
 interface InlineIssueRowProps {
   // Add row props
@@ -24,6 +24,7 @@ interface InlineIssueRowProps {
   onInlineEditBlur?: () => void;
   onEditClick?: () => void;
   onDelete?: () => void;
+  onExpandClick?: (issue: IssueRow) => void;
 }
 
 // Helper to render a cell for add or edit/view
@@ -36,7 +37,10 @@ function renderCell({
   onKeyDown,
   autoFocus,
   placeholder,
+  expandable,
   className = '',
+  onExpandClick,
+  issue,
 }: {
   field: GitHubProjectField | { id: string; name: string; type: string; options?: { id: string; name: string }[] };
   value: string;
@@ -46,7 +50,10 @@ function renderCell({
   onKeyDown?: (e: React.KeyboardEvent) => void;
   autoFocus?: boolean;
   placeholder?: string;
+  expandable?: boolean;
   className?: string;
+  onExpandClick?: (issue: IssueRow) => void;
+  issue?: IssueRow;
 }) {
   if (field.type === 'SINGLE_SELECT') {
     return (
@@ -68,16 +75,31 @@ function renderCell({
     );
   } else {
     return (
-      <Input
-        className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground ${className}`}
-        autoFocus={autoFocus}
-        type={field.type === 'NUMBER' ? 'number' : 'text'}
-        value={value}
-        onBlur={onBlur}
-        onChange={(e) => onChange && onChange(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder={placeholder || field.name}
-      />
+      <span className='flex flex-grow h-[calc(100%-2px)] items-center'>
+        <Input
+          className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground truncate ${className}`}
+          autoFocus={autoFocus}
+          type={field.type === 'NUMBER' ? 'number' : 'text'}
+          value={value}
+          onBlur={onBlur}
+          onChange={(e) => onChange && onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder || field.name}
+        />
+
+        {expandable && (
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            aria-label='Expand'
+            className='shrink-0'
+            onClick={() => onExpandClick && issue && onExpandClick(issue)}
+          >
+            <Maximize2Icon size={16} className='text-muted-foreground' />
+          </Button>
+        )}
+      </span>
     );
   }
 }
@@ -97,6 +119,7 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
     onInlineEditBlur,
     onEditClick,
     onDelete,
+    onExpandClick,
     templates,
   } = props;
 
@@ -161,10 +184,12 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
           autoFocus: !isAdd && !!(inlineEdit && issue && inlineEdit.id === issue.id && inlineEdit.field === 'title'),
           placeholder: 'Title',
           className: 'border-none outline-none shadow-none',
+          onExpandClick: onExpandClick,
+          issue: issue,
         })}
       </TableCell>
       <TableCell
-        className='p-0 h-[3.375rem] border-r border-border'
+        className='p-0 min-h-[3.375rem] border-r border-border'
         onFocus={isAdd ? undefined : () => handleCellClick('description')}
         onClick={isAdd ? undefined : () => handleCellClick('description')}
         tabIndex={isAdd ? -1 : inlineEdit && issue && inlineEdit.id === issue.id && inlineEdit.field === 'description' ? -1 : 0}
@@ -177,7 +202,10 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
           onKeyDown: (e) => handleKeyDown(e, 'description'),
           autoFocus: !isAdd && !!(inlineEdit && issue && inlineEdit.id === issue.id && inlineEdit.field === 'description'),
           placeholder: 'Description',
+          expandable: true,
           className: 'border-none outline-none shadow-none',
+          onExpandClick: onExpandClick,
+          issue: isAdd ? addRow : issue,
         })}
       </TableCell>
       {renderedFields.map((field) => {
@@ -203,6 +231,8 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
               onKeyDown: (e) => handleKeyDown(e, field.id),
               autoFocus: !isAdd && !!(inlineEdit && issue && inlineEdit.id === issue.id && inlineEdit.field === field.id),
               placeholder: field.name,
+              onExpandClick: onExpandClick,
+              issue: issue,
             })}
           </TableCell>
         );
