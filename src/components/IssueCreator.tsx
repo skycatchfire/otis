@@ -9,7 +9,7 @@ import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { GitHubProjectField, ParsedTemplate } from '../types';
@@ -276,33 +276,49 @@ const IssueCreator: React.FC = () => {
                 </PopoverContent>
               </Popover>
 
-              {selectedProject ? (
-                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
-                  <SelectTrigger className="min-w-[200px]">
-                    <SelectValue placeholder="Select repository" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedProject.repositories.map((repo: { id: string; name: string }) => (
-                      <SelectItem key={repo.id} value={repo.name}>
-                        {repo.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
-                  <SelectTrigger className="min-w-[200px]">
-                    <SelectValue placeholder="Select repository" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orgRepositories.map((repo: { id: string; name: string }) => (
-                      <SelectItem key={repo.id} value={repo.name}>
-                        {repo.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={false} className="min-w-[200px] justify-between">
+                    {selectedRepo || 'Select repository'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="min-w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search repository..." />
+                    <CommandList>
+                      <CommandEmpty>No repository found.</CommandEmpty>
+                      <CommandGroup>
+                        {selectedProject
+                          ? selectedProject.repositories.map((repo: { id: string; name: string }) => (
+                              <CommandItem
+                                key={repo.id}
+                                value={repo.name}
+                                onSelect={() => {
+                                  setSelectedRepo(repo.name);
+                                }}
+                              >
+                                {repo.name}
+                                <Check className={'ml-auto h-4 w-4' + (selectedRepo === repo.name ? ' opacity-100' : ' opacity-0')} />
+                              </CommandItem>
+                            ))
+                          : orgRepositories.map((repo: { id: string; name: string }) => (
+                              <CommandItem
+                                key={repo.id}
+                                value={repo.name}
+                                onSelect={() => {
+                                  setSelectedRepo(repo.name);
+                                }}
+                              >
+                                {repo.name}
+                                <Check className={'ml-auto h-4 w-4' + (selectedRepo === repo.name ? ' opacity-100' : ' opacity-0')} />
+                              </CommandItem>
+                            ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
