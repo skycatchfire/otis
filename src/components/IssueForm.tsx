@@ -172,7 +172,10 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
                   <SelectContent>
                     {parsedTemplates.map((template: ParsedTemplate) => (
                       <SelectItem key={template.name} value={template.name}>
-                        {template.name}
+                        <span className='flex flex-col text-left'>
+                          <span>{template.parsed?.name || template.name}</span>
+                          {template.parsed?.description && <span className='text-xs text-muted-foreground'>{template.parsed.description}</span>}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

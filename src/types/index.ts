@@ -77,5 +77,6 @@ export interface ParsedTemplate extends GitHubIssueTemplate {
   parsed: {
     body?: Array<{ attributes?: { value?: string } }>;
     name?: string;
+    description?: string;
   } | null;
 }

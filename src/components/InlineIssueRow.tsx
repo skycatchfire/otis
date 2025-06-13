@@ -5,18 +5,7 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Edit2, Trash2 } from 'lucide-react';
 import { IssueRow } from './IssueCreator';
-import { GitHubProjectField } from '../types';
-
-// Define a type for parsed templates (copied from IssueForm/IssueTable)
-interface ParsedTemplate {
-  name: string;
-  path: string;
-  content: string;
-  parsed: {
-    body?: Array<{ attributes?: { value?: string } }>;
-    name?: string;
-  } | null;
-}
+import { GitHubProjectField, ParsedTemplate } from '../types';
 
 // Types for props
 interface InlineIssueRowProps {
@@ -63,7 +52,10 @@ function renderCell({
   if (field.type === 'SINGLE_SELECT') {
     return (
       <Select value={value} defaultValue={value} onValueChange={(val) => onChange && onChange(val)}>
-        <SelectTrigger autoFocus={autoFocus} className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground ${className}`}>
+        <SelectTrigger
+          autoFocus={autoFocus}
+          className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground ${className}`}
+        >
           <SelectValue placeholder={placeholder || `Select ${field.name}`} />
         </SelectTrigger>
         <SelectContent>
@@ -116,13 +108,16 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
         <TableCell className='p-0 h-[3.375rem] border-r border-border' tabIndex={-1}>
           {/* Template select */}
           <Select value={addRow.template} onValueChange={(val) => onAddRowChange && onAddRowChange('template', val)}>
-            <SelectTrigger className='h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground border-none outline-none shadow-none'>
+            <SelectTrigger className='h-full rounded-none hover:bg-accent focus:bg-accent text-foreground border-none outline-none shadow-none'>
               <SelectValue placeholder='Select template' />
             </SelectTrigger>
             <SelectContent>
               {(templates || []).map((template) => (
                 <SelectItem key={template.name} value={template.name}>
-                  {template.parsed && template.parsed.name ? template.parsed.name : template.name}
+                  <span className='flex flex-col text-left'>
+                    <span>{template.parsed?.name || template.name}</span>
+                    {template.parsed?.description && <span className='text-xs text-muted-foreground'>{template.parsed.description}</span>}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -189,7 +184,10 @@ const InlineIssueRow = forwardRef<HTMLTableRowElement, InlineIssueRowProps>((pro
           <SelectContent>
             {(templates || []).map((template) => (
               <SelectItem key={template.name} value={template.name}>
-                {template.parsed && template.parsed.name ? template.parsed.name : template.name}
+                <span className='flex flex-col text-left'>
+                  <span>{template.parsed?.name || template.name}</span>
+                  {template.parsed?.description && <span className='text-xs text-muted-foreground'>{template.parsed.description}</span>}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
