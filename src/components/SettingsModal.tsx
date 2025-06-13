@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AlertCircle } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 interface SettingsFormData {
   organization: string;
@@ -18,8 +19,30 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+const themeOptions = [
+  { label: 'System', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+];
+
+const setBodyClassForTheme = (theme: string) => {
+  if (typeof document === 'undefined') return;
+  if (theme === 'dark') {
+    document.body.classList.add('dark');
+  } else if (theme === 'light') {
+    document.body.classList.remove('dark');
+  } else {
+    // System: match prefers-color-scheme
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }
+};
+
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
-  const { settings, updateSettings } = useSettingsStore();
+  const { settings, updateSettings, setTheme } = useSettingsStore();
 
   const {
     register,
@@ -32,6 +55,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       token: settings.token,
     },
   });
+
+  useEffect(() => {
+    const theme = settings.theme || 'system';
+    setBodyClassForTheme(theme);
+    // Listen for system changes if theme is system
+    if (theme === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => setBodyClassForTheme('system');
+      media.addEventListener('change', handler);
+      return () => media.removeEventListener('change', handler);
+    }
+  }, [settings.theme]);
 
   const onSubmit = async (data: SettingsFormData) => {
     try {
@@ -94,6 +129,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className='space-y-4'>
             <div>
+              <Label htmlFor='theme'>Theme</Label>
+              <Select value={settings.theme || 'system'} onValueChange={setTheme}>
+                <SelectTrigger id='theme' className='mt-1 w-full'>
+                  <SelectValue placeholder='Select theme' />
+                </SelectTrigger>
+                <SelectContent>
+                  {themeOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className='mt-1 text-xs text-muted-foreground'>Choose your preferred appearance for Otis.</p>
+            </div>
+            <div>
               <Label htmlFor='organization'>GitHub Organization</Label>
               <Input id='organization' placeholder='e.g., my-organization' {...register('organization', { required: 'Organization is required' })} />
               {errors.organization && (
@@ -102,7 +153,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   {errors.organization.message}
                 </p>
               )}
-              <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>Enter the organization name as it appears in the GitHub URL</p>
+              <p className='mt-1 text-xs text-muted-foreground'>Enter the organization name as it appears in the GitHub URL</p>
             </div>
             <div>
               <Label htmlFor='token'>GitHub Personal Access Token (PAT)</Label>

@@ -8,6 +8,7 @@ interface Settings {
   token: string;
   isValid: boolean;
   selectedRepo?: string;
+  theme?: string;
 }
 
 interface SettingsState {
@@ -21,6 +22,7 @@ interface SettingsState {
   setLastUsedTemplate: (template: string) => void;
   setLastUsedFields: (fields: Record<string, string>) => void;
   setDraftIssues: (issues: IssueRow[]) => void;
+  setTheme: (theme: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -67,6 +69,13 @@ export const useSettingsStore = create<SettingsState>()(
       setLastUsedTemplate: (template) => set({ lastUsedTemplate: template }),
       setLastUsedFields: (fields) => set({ lastUsedFields: fields }),
       setDraftIssues: (issues) => set({ draftIssues: issues }),
+      setTheme: (theme) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            theme,
+          },
+        })),
     }),
     {
       name: 'github-issue-creator-settings',
@@ -77,6 +86,7 @@ export const useSettingsStore = create<SettingsState>()(
           token: state.settings.token,
           isValid: state.settings.isValid,
           selectedRepo: state.settings.selectedRepo,
+          theme: state.settings.theme,
         },
         isConfigured: state.isConfigured,
         lastUsedTemplate: state.lastUsedTemplate,
