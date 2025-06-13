@@ -99,6 +99,23 @@ const IssueCreator: React.FC = () => {
 
   const selectedProject = projects.find((p: { id: string }) => p.id === settings.projectId);
 
+  // Auto-select repository when project changes
+  useEffect(() => {
+    if (selectedProject) {
+      const repos = selectedProject.repositories;
+      if (repos.length === 1) {
+        // Auto-select if only one repository
+        setSelectedRepo(repos[0].name);
+      } else if (repos.length > 1) {
+        // Clear selection if multiple repositories
+        setSelectedRepo('');
+      }
+    } else {
+      // Clear selection when no project is selected
+      setSelectedRepo('');
+    }
+  }, [selectedProject]);
+
   // Keep settings.selectedRepo in sync with local selectedRepo
   useEffect(() => {
     if (settings.selectedRepo !== selectedRepo) {
