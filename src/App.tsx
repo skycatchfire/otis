@@ -12,7 +12,7 @@ function App() {
   const { isConfigured } = useSettingsStore();
 
   return (
-    <div className='min-h-screen bg-background text-foreground dark'>
+    <div className='min-h-screen bg-background text-foreground'>
       <Header>
         <Button
           variant='ghost'

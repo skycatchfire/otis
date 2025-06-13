@@ -6,34 +6,19 @@ import { useQuery } from 'react-query';
 import { useSettingsStore } from '../stores/settingsStore';
 import { fetchProjectFields, fetchIssueTemplates } from '../services/githubService';
 import { IssueRow as BaseIssueRow } from './IssueCreator';
-import { GitHubIssueTemplate, GitHubProjectField } from '../types';
-import yaml from 'js-yaml';
+import { GitHubProjectField, ParsedTemplate } from '../types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { parseIssueTemplates } from '../lib/utils';
 
 interface IssueFormProps {
   initialData?: Partial<BaseIssueRow>;
   onSubmit: (issue: BaseIssueRow) => void;
   onCancel: () => void;
-}
-
-// Define a type for parsed templates
-interface ParsedTemplate extends GitHubIssueTemplate {
-  parsed: {
-    body: Array<{ attributes?: { value?: string } }>;
-    name: string;
-  } | null;
-}
-
-// Helper type guard for parsed template
-function hasName(obj: unknown): obj is { name: string } {
-  return (
-    typeof obj === 'object' && obj !== null && 'name' in (obj as Record<string, unknown>) && typeof (obj as Record<string, unknown>).name === 'string'
-  );
 }
 
 // Extend IssueRow to allow a 'fields' property for form submission
@@ -58,23 +43,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
   );
 
   // Parse YAML templates into JSON objects, ignoring config.yaml
-  const parsedTemplates: ParsedTemplate[] = useMemo(() => {
-    return (templates as GitHubIssueTemplate[])
-      .filter((template) => template.path !== '.github/ISSUE_TEMPLATE/config.yml')
-      .map((template) => {
-        // Ignore config.yaml (case-insensitive)
-        if (template && (template.path.endsWith('.yaml') || template.path.endsWith('.yml'))) {
-          try {
-            const parsed: unknown = yaml.load(template.content);
-            return { ...template, parsed: parsed as { body: Array<{ attributes?: { value?: string } }>; name: string } };
-          } catch (e) {
-            console.error(`Failed to parse YAML for template ${template.name}:`, e);
-            return { ...template, parsed: null };
-          }
-        }
-        return { ...template, parsed: null };
-      });
-  }, [templates]);
+  const parsedTemplates: ParsedTemplate[] = useMemo(() => parseIssueTemplates(templates as ParsedTemplate[]), [templates]);
 
   // Prepare default values for useForm
   const dynamicFieldDefaults = initialData?.fields
@@ -203,7 +172,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
                   <SelectContent>
                     {parsedTemplates.map((template: ParsedTemplate) => (
                       <SelectItem key={template.name} value={template.name}>
-                        {hasName(template.parsed) ? template.parsed.name : template.name}
+                        {template.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
