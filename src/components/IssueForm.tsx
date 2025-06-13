@@ -139,10 +139,7 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
             name={field.id as keyof BaseIssueRow}
             control={control}
             render={({ field: controllerField }) => (
-              <Select
-                value={typeof controllerField.value === 'string' ? controllerField.value : ''}
-                onValueChange={(val) => controllerField.onChange(val)}
-              >
+              <Select value={typeof controllerField.value === 'string' ? controllerField.value : ''} onValueChange={(val) => controllerField.onChange(val)}>
                 <SelectTrigger>
                   <SelectValue placeholder={`Select ${field.name}`} />
                 </SelectTrigger>
@@ -158,9 +155,9 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
           />
         );
       case 'NUMBER':
-        return <Input type='number' id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
+        return <Input type="number" id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
       case 'TEXT':
-        return <Input type='text' id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
+        return <Input type="text" id={field.id} {...register(field.id as keyof BaseIssueRow)} />;
       default:
         return null;
     }
@@ -176,25 +173,23 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{initialData ? 'Edit Issue' : 'Add New Issue'}</DialogTitle>
-          <DialogDescription>
-            {initialData ? 'Edit the details of this issue.' : 'Fill out the form to add a new issue to your batch.'}
-          </DialogDescription>
+          <DialogDescription>{initialData ? 'Edit the details of this issue.' : 'Fill out the form to add a new issue to your batch.'}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)}>
-          <div className='space-y-4'>
-            {settings.selectedRepo && (
+          <div className="space-y-4">
+            {settings.selectedRepo && parsedTemplates.length > 0 && (
               <div>
-                <Label htmlFor='template'>Issue Template</Label>
+                <Label htmlFor="template">Issue Template</Label>
                 <Select value={selectedTemplate} onValueChange={(val) => setSelectedTemplate(val)}>
                   <SelectTrigger>
-                    <SelectValue placeholder='Select a template' />
+                    <SelectValue placeholder="Select a template" />
                   </SelectTrigger>
                   <SelectContent>
                     {parsedTemplates.map((template: ParsedTemplate) => (
                       <SelectItem key={template.name} value={template.name}>
-                        <span className='flex flex-col text-left'>
+                        <span className="flex flex-col text-left">
                           <span>{template.parsed?.name || template.name}</span>
-                          {template.parsed?.description && <span className='text-xs text-muted-foreground'>{template.parsed.description}</span>}
+                          {template.parsed?.description && <span className="text-xs text-muted-foreground">{template.parsed.description}</span>}
                         </span>
                       </SelectItem>
                     ))}
@@ -204,28 +199,28 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
             )}
 
             <div>
-              <Label htmlFor='title'>Title</Label>
-              <Input id='title' {...register('title', { required: 'Title is required' })} />
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" {...register('title', { required: 'Title is required' })} />
               {errors.title && (
-                <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-                  <AlertCircle className='w-4 h-4' />
+                <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
                   {errors.title.message}
                 </p>
               )}
             </div>
 
             <div>
-              <Label htmlFor='description'>Description</Label>
-              <Textarea id='description' rows={5} {...register('description', { required: 'Description is required' })} />
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" rows={5} {...register('description', { required: 'Description is required' })} />
               {errors.description && (
-                <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-                  <AlertCircle className='w-4 h-4' />
+                <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
                   {errors.description.message}
                 </p>
               )}
             </div>
 
-            <div className='grid grid-cols-1 gap-4'>
+            <div className="grid grid-cols-1 gap-4">
               {fields.map((field: GitHubProjectField) => {
                 const rendered = renderField(field);
                 if (!rendered) return null;
@@ -238,11 +233,11 @@ const IssueForm: React.FC<IssueFormProps> = ({ initialData, onSubmit, onCancel }
               })}
             </div>
           </div>
-          <div className='flex justify-end gap-2 mt-6'>
-            <Button type='button' onClick={onCancel} variant='secondary'>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button type="button" onClick={onCancel} variant="secondary">
               Cancel
             </Button>
-            <Button type='submit' variant='default'>
+            <Button type="submit" variant="default">
               {initialData ? 'Save' : 'Add Issue'}
             </Button>
           </div>

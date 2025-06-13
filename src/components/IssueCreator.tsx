@@ -3,7 +3,7 @@ import { PlusCircle, Download, Upload, Send, ChevronsUpDown, Check } from 'lucid
 import { useQuery } from 'react-query';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../stores/settingsStore';
-import { fetchProjects, createBatchRepoIssuesAndAddToProject, fetchProjectFields, fetchIssueTemplates } from '../services/githubService';
+import { fetchProjects, createBatchRepoIssuesAndAddToProject, createBatchRepoIssues, fetchProjectFields, fetchIssueTemplates, fetchOrganizationRepositories } from '../services/githubService';
 import IssueTable from './IssueTable';
 import IssueForm from './IssueForm';
 import { Button } from '@/components/ui/button';
@@ -52,15 +52,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onConfirm, onCanc
         </DialogHeader>
 
         <p>
-          You&apos;re about to create <strong className='font-semibold'>{issueCount}</strong> issues in{' '}
-          <strong className='font-semibold'>{projectName}</strong>. Are you sure you want to proceed?
+          You&apos;re about to create <strong className="font-semibold">{issueCount}</strong> issues in <strong className="font-semibold">{projectName}</strong>. Are you sure you want to proceed?
         </p>
 
-        <div className='flex justify-end gap-3'>
-          <Button onClick={onCancel} variant='secondary'>
+        <div className="flex justify-end gap-3">
+          <Button onClick={onCancel} variant="secondary">
             Cancel
           </Button>
-          <Button onClick={onConfirm} variant='default'>
+          <Button onClick={onConfirm} variant="default">
             Create Issues
           </Button>
         </div>
@@ -83,21 +82,18 @@ const IssueCreator: React.FC = () => {
     keepPreviousData: true,
   });
 
-  const { data: fields = [] } = useQuery<GitHubProjectField[]>(
-    ['projectFields', settings.projectId],
-    () => fetchProjectFields(settings, settings.projectId),
-    {
-      enabled: !!settings.projectId && !!settings.token && !!settings.organization,
-    }
-  );
+  const { data: orgRepositories = [] } = useQuery(['orgRepositories', settings.organization, settings.token], () => fetchOrganizationRepositories(settings), {
+    enabled: !!settings.organization && !!settings.token,
+    keepPreviousData: true,
+  });
 
-  const { data: templates = [] } = useQuery(
-    ['issueTemplates', settings.organization, selectedRepo],
-    () => (selectedRepo ? fetchIssueTemplates(settings, selectedRepo) : Promise.resolve([])),
-    {
-      enabled: !!selectedRepo,
-    }
-  );
+  const { data: fields = [] } = useQuery<GitHubProjectField[]>(['projectFields', settings.projectId], () => fetchProjectFields(settings, settings.projectId), {
+    enabled: !!settings.projectId && !!settings.token && !!settings.organization,
+  });
+
+  const { data: templates = [] } = useQuery(['issueTemplates', settings.organization, selectedRepo], () => (selectedRepo ? fetchIssueTemplates(settings, selectedRepo) : Promise.resolve([])), {
+    enabled: !!selectedRepo,
+  });
 
   const parsedTemplates: ParsedTemplate[] = React.useMemo(() => parseIssueTemplates(templates as ParsedTemplate[]), [templates]);
 
@@ -187,11 +183,6 @@ const IssueCreator: React.FC = () => {
       return;
     }
 
-    if (!settings.projectId) {
-      toast('Please select a project');
-      return;
-    }
-
     if (!selectedRepo) {
       toast('Please select a repository');
       return;
@@ -210,9 +201,17 @@ const IssueCreator: React.FC = () => {
         images: issue.images,
       }));
 
-      await createBatchRepoIssuesAndAddToProject(settings, selectedRepo, formattedIssues, (completed, total) => {
-        toast(`Created ${completed} of ${total} issues`);
-      });
+      if (settings.projectId) {
+        // Create issues and add to project
+        await createBatchRepoIssuesAndAddToProject(settings, selectedRepo, formattedIssues, (completed, total) => {
+          toast(`Created ${completed} of ${total} issues`);
+        });
+      } else {
+        // Create issues directly in repository
+        await createBatchRepoIssues(settings, selectedRepo, formattedIssues, (completed, total) => {
+          toast(`Created ${completed} of ${total} issues`);
+        });
+      }
 
       setIssues([]);
       setDraftIssues([]); // Clear drafts after submit
@@ -227,30 +226,38 @@ const IssueCreator: React.FC = () => {
 
   return (
     <div>
-      <Card className='border-none shadow-none'>
-        <CardContent className='p-6'>
-          <div className='flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6'>
-            <h2 className='sr-only'>Bulk Issue Creator</h2>
+      <Card className="border-none shadow-none">
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between mb-6">
+            <h2 className="sr-only">Bulk Issue Creator</h2>
 
-            <div className='flex gap-2 min-w-[18.75rem]'>
+            <div className="flex gap-2 min-w-[18.75rem]">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant='outline' role='combobox' aria-expanded={false} className='w-[250px] justify-between'>
+                  <Button variant="outline" role="combobox" aria-expanded={false} className="w-[250px] justify-between">
                     {settings.projectId
                       ? projects.find((p: { id: string }) => p.id === settings.projectId)?.name +
-                        (projects.find((p: { id: string }) => p.id === settings.projectId)
-                          ? ` (#${projects.find((p: { id: string }) => p.id === settings.projectId)?.number})`
-                          : '')
-                      : 'Select project...'}
-                    <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                        (projects.find((p: { id: string }) => p.id === settings.projectId) ? ` (#${projects.find((p: { id: string }) => p.id === settings.projectId)?.number})` : '')
+                      : 'Select project (optional)'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className='w-[250px] p-0'>
+                <PopoverContent className="w-[250px] p-0">
                   <Command>
-                    <CommandInput placeholder='Search project...' />
+                    <CommandInput placeholder="Search project..." />
                     <CommandList>
                       <CommandEmpty>No project found.</CommandEmpty>
                       <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => {
+                            updateSettings({ ...settings, projectId: '' });
+                            setSelectedRepo('');
+                          }}
+                        >
+                          No project (create issues directly)
+                          <Check className={'ml-auto h-4 w-4' + (!settings.projectId ? ' opacity-100' : ' opacity-0')} />
+                        </CommandItem>
                         {projects.map((project: { id: string; name: string; number: number }) => (
                           <CommandItem
                             key={project.id}
@@ -269,13 +276,26 @@ const IssueCreator: React.FC = () => {
                 </PopoverContent>
               </Popover>
 
-              {selectedProject && (
+              {selectedProject ? (
                 <Select value={selectedRepo} onValueChange={setSelectedRepo}>
-                  <SelectTrigger className='min-w-[200px]'>
-                    <SelectValue placeholder='Select repository for templates' />
+                  <SelectTrigger className="min-w-[200px]">
+                    <SelectValue placeholder="Select repository" />
                   </SelectTrigger>
                   <SelectContent>
                     {selectedProject.repositories.map((repo: { id: string; name: string }) => (
+                      <SelectItem key={repo.id} value={repo.name}>
+                        {repo.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
+                  <SelectTrigger className="min-w-[200px]">
+                    <SelectValue placeholder="Select repository" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orgRepositories.map((repo: { id: string; name: string }) => (
                       <SelectItem key={repo.id} value={repo.name}>
                         {repo.name}
                       </SelectItem>
@@ -286,27 +306,22 @@ const IssueCreator: React.FC = () => {
             </div>
           </div>
 
-          <div className='flex flex-wrap gap-2 mb-4'>
-            <Button onClick={() => setIsFormOpen(true)} variant='default' className='flex items-center gap-1'>
-              <PlusCircle className='w-4 h-4' /> Add Issue
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button onClick={() => setIsFormOpen(true)} variant="default" className="flex items-center gap-1">
+              <PlusCircle className="w-4 h-4" /> Add Issue
             </Button>
 
-            <Button onClick={exportToJson} variant='secondary' className='flex items-center gap-1' disabled={issues.length === 0}>
-              <Download className='w-4 h-4' /> Export
+            <Button onClick={exportToJson} variant="secondary" className="flex items-center gap-1" disabled={issues.length === 0}>
+              <Download className="w-4 h-4" /> Export
             </Button>
 
-            <label className='btn btn-secondary flex items-center gap-1 cursor-pointer'>
-              <Upload className='w-4 h-4' /> Import
-              <input type='file' accept='.json' className='hidden' onChange={importFromJson} />
+            <label className="btn btn-secondary flex items-center gap-1 cursor-pointer">
+              <Upload className="w-4 h-4" /> Import
+              <input type="file" accept=".json" className="hidden" onChange={importFromJson} />
             </label>
 
-            <Button
-              onClick={handleSubmitConfirm}
-              variant='default'
-              className='flex items-center gap-1 ml-auto'
-              disabled={issues.length === 0 || !settings.projectId || !selectedRepo || isSubmitting}
-            >
-              <Send className='w-4 h-4' /> Submit All Issues
+            <Button onClick={handleSubmitConfirm} variant="default" className="flex items-center gap-1 ml-auto" disabled={issues.length === 0 || !selectedRepo || isSubmitting}>
+              <Send className="w-4 h-4" /> Submit All Issues
             </Button>
           </div>
 
@@ -330,7 +345,7 @@ const IssueCreator: React.FC = () => {
         onConfirm={handleSubmitIssues}
         onCancel={() => setIsConfirmOpen(false)}
         issueCount={issues.length}
-        projectName={selectedProject ? `${selectedProject.name} (#${selectedProject.number})` : ''}
+        projectName={selectedProject ? `${selectedProject.name} (#${selectedProject.number})` : selectedRepo}
       />
     </div>
   );

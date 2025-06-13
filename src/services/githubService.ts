@@ -147,6 +147,28 @@ export const fetchProjects = async (credentials: GitHubCredentials, searchQuery:
   }
 };
 
+export const fetchOrganizationRepositories = async (credentials: GitHubCredentials) => {
+  try {
+    if (!credentials.organization || !credentials.token) {
+      throw new Error('GitHub credentials not configured. Please check your settings.');
+    }
+
+    const client = createApiClient(credentials);
+    const response = await client.get(`/orgs/${credentials.organization}/repos?per_page=100&sort=updated`);
+
+    return response.data.map((repo: { id: number; name: string; full_name: string; private: boolean }) => ({
+      id: repo.id.toString(),
+      name: repo.name,
+      fullName: repo.full_name,
+      private: repo.private,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch organization repositories:', error);
+    handleGitHubError(error);
+    throw error;
+  }
+};
+
 export const fetchIssueTemplates = async (credentials: GitHubCredentials, repoName: string) => {
   try {
     const client = createApiClient(credentials);
@@ -156,9 +178,7 @@ export const fetchIssueTemplates = async (credentials: GitHubCredentials, repoNa
       response.data.map(async (file: GitHubIssueTemplate) => {
         if (file && file.type === 'file' && (file.name.endsWith('.md') || file.name.endsWith('.yaml') || file.name.endsWith('.yml'))) {
           // Fetch file content using the API (not raw URL)
-          const fileResponse = await client.get<GitHubIssueTemplate>(
-            `/repos/${credentials.organization}/${repoName}/contents/.github/ISSUE_TEMPLATE/${file.name}`
-          );
+          const fileResponse = await client.get<GitHubIssueTemplate>(`/repos/${credentials.organization}/${repoName}/contents/.github/ISSUE_TEMPLATE/${file.name}`);
           const { content, encoding } = fileResponse.data;
           let decodedContent = content;
           if (encoding === 'base64') {
@@ -378,6 +398,43 @@ export const createBatchProjectItems = async (
  * @param onProgress Optional progress callback
  * @returns Array of results: { success, data } or { success, error, issue }
  */
+export const createBatchRepoIssues = async (
+  credentials: GitHubCredentials,
+  repoName: string,
+  issues: Array<{ title: string; body: string; fields?: Record<string, unknown> }>,
+  onProgress?: (completed: number, total: number) => void
+) => {
+  const results = [];
+  const total = issues.length;
+  const restClient = createApiClient(credentials);
+
+  for (let i = 0; i < issues.length; i++) {
+    try {
+      const issue = issues[i];
+      // Create the issue in the repo
+      const createIssueResp = await restClient.post(`/repos/${credentials.organization}/${repoName}/issues`, {
+        title: issue.title,
+        body: issue.body,
+      });
+      const createdIssue = createIssueResp.data;
+      if (!createdIssue) {
+        throw new Error('Failed to create issue in repo');
+      }
+
+      results.push({ success: true, data: { issue: createdIssue } });
+      if (onProgress) {
+        onProgress(i + 1, total);
+      }
+    } catch (error) {
+      results.push({ success: false, error, issue: issues[i] });
+      if (onProgress) {
+        onProgress(i + 1, total);
+      }
+    }
+  }
+  return results;
+};
+
 export const createBatchRepoIssuesAndAddToProject = async (
   credentials: GitHubCredentials,
   repoName: string,
@@ -390,10 +447,7 @@ export const createBatchRepoIssuesAndAddToProject = async (
   const gqlClient = createGraphQLClient(credentials);
 
   // Fetch project fields to get types/options
-  const projectFields: Array<{ id: string; type: string; options?: Array<{ id: string; name: string }> }> = await fetchProjectFields(
-    credentials,
-    credentials.projectId
-  );
+  const projectFields: Array<{ id: string; type: string; options?: Array<{ id: string; name: string }> }> = await fetchProjectFields(credentials, credentials.projectId);
   const fieldTypeMap: Record<string, { type: string; options?: Array<{ id: string; name: string }> }> = {};
   projectFields.forEach((f: { id: string; type: string; options?: Array<{ id: string; name: string }> }) => {
     fieldTypeMap[f.id] = { type: f.type, options: f.options };
