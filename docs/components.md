@@ -4,9 +4,10 @@
 
 - **Purpose:** The root component. Handles layout, theme, and conditional rendering based on configuration state.
 - **Key Features:**
-  - Renders the `Header`, `SettingsModal`, and main content area.
+  - Renders the `Header`, `SettingsModal`, `Toaster` (notifications), and main content area.
   - Shows a welcome/configuration prompt if not connected to GitHub.
   - Displays the `IssueCreator` when configured.
+  - Applies theme (light/dark/system) using settings.
 
 ## Header
 
@@ -17,11 +18,12 @@
 
 ## SettingsModal
 
-- **Purpose:** Modal for configuring GitHub connection (organization, PAT).
+- **Purpose:** Modal for configuring GitHub connection (organization, PAT, theme).
 - **Key Features:**
   - Uses React Hook Form for validation.
   - Validates credentials by testing GitHub connection.
   - Updates global settings state via Zustand.
+  - Allows theme selection (light/dark/system).
 - **Props:**
   - `onClose`: Closes the modal.
 
@@ -30,11 +32,12 @@
 - **Purpose:** Main interface for batch issue creation and management.
 - **Key Features:**
   - Search/select GitHub projects and repositories.
-  - Add, edit, remove, import, and export issues.
-  - Handles batch submission to GitHub.
+  - Add, edit, remove, import, and export issues (JSON).
+  - Handles batch submission to GitHub with confirmation dialog.
   - Renders `IssueForm` and `IssueTable`.
-- **State:**
   - Tracks issues, selected project/repo, form/modal state, etc.
+  - Supports file/image attachments for issues.
+  - Uses notifications (toast/sonner) for feedback.
 
 ## IssueForm
 
@@ -43,6 +46,7 @@
   - Supports GitHub issue templates (Markdown/YAML).
   - Maps custom project fields.
   - Uses React Hook Form for validation.
+  - Allows file/image attachments.
 - **Props:**
   - `initialData`: For editing existing issues.
   - `onSubmit`, `onCancel`, `selectedRepo`.
@@ -52,8 +56,28 @@
 - **Purpose:** Displays the current batch of issues in a table.
 - **Key Features:**
   - Edit or delete issues inline.
-  - Shows key fields (title, type, status, assignee, estimate).
+  - Shows key fields (title, type, status, assignee, estimate, labels, custom fields, attachments).
   - Uses `IssueForm` for editing.
 - **Props:**
   - `issues`: Array of issues.
   - `onUpdate`, `onDelete`: Handlers for editing/removing issues.
+  - `fields`, `templates`, `editingIssueId`, `setEditingIssueId`, `onCloseEdit`.
+
+## ConfirmDialog
+
+- **Purpose:** Confirmation dialog for submitting all issues in a batch.
+- **Key Features:**
+  - Shows issue count and project name.
+  - Confirms or cancels submission.
+- **Props:**
+  - `isOpen`, `onConfirm`, `onCancel`, `issueCount`, `projectName`.
+
+## Toaster/Notifications
+
+- **Purpose:** Shows toast notifications for errors, progress, and success.
+- **Key Features:**
+  - Used throughout the app for user feedback (via react-hot-toast or sonner).
+
+## UI Library
+
+- All UI components are built with [shadcn/ui](https://ui.shadcn.com/) for consistency, accessibility, and modern design.
