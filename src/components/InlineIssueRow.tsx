@@ -75,9 +75,9 @@ function renderCell({
     );
   } else {
     return (
-      <span className='flex flex-grow h-[calc(100%-2px)] items-center'>
+      <div className='flex items-stretch h-full min-h-[3.375rem] w-full'>
         <Input
-          className={`h-full rounded-none border-none hover:bg-accent focus:bg-accent text-foreground truncate ${className}`}
+          className={`min-h-[calc(3.375rem-1px)] rounded-none border-none hover:bg-accent focus:bg-accent text-foreground truncate ${className}`}
           autoFocus={autoFocus}
           type={field.type === 'NUMBER' ? 'number' : 'text'}
           value={value}
@@ -93,13 +93,13 @@ function renderCell({
             variant='ghost'
             size='icon'
             aria-label='Expand'
-            className='shrink-0'
+            className='shrink-0 inline-flex rounded-none min-h-[calc(3.375rem-1px)]'
             onClick={() => onExpandClick && issue && onExpandClick(issue)}
           >
             <Maximize2Icon size={16} className='text-muted-foreground' />
           </Button>
         )}
-      </span>
+      </div>
     );
   }
 }
